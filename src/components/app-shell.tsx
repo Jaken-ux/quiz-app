@@ -1,8 +1,8 @@
 "use client";
 
 import { BarChart3, Home, User, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 
 import { MobileFrame } from "@/components/mobile-frame";
 import { cn } from "@/lib/utils";
@@ -13,22 +13,32 @@ type Tab = {
   id: TabId;
   label: string;
   icon: LucideIcon;
+  href: string;
 };
 
 const TABS: Tab[] = [
-  { id: "home", label: "Hem", icon: Home },
-  { id: "stats", label: "Stats", icon: BarChart3 },
-  { id: "profile", label: "Profil", icon: User },
+  { id: "home", label: "Hem", icon: Home, href: "/" },
+  { id: "stats", label: "Stats", icon: BarChart3, href: "/stats" },
+  { id: "profile", label: "Profil", icon: User, href: "/profile" },
 ];
+
+function activeTabFromPath(pathname: string | null): TabId {
+  if (!pathname) return "home";
+  if (pathname === "/stats" || pathname.startsWith("/stats/")) return "stats";
+  if (pathname === "/profile" || pathname.startsWith("/profile/")) {
+    return "profile";
+  }
+  return "home";
+}
 
 type AppShellProps = {
   children: React.ReactNode;
 };
 
 export function AppShell({ children }: AppShellProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("home");
   const pathname = usePathname();
   const hideNav = pathname?.startsWith("/quiz/") ?? false;
+  const activeTab = activeTabFromPath(pathname);
 
   return (
     <MobileFrame>
@@ -50,13 +60,12 @@ export function AppShell({ children }: AppShellProps) {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
-              <button
+              <Link
                 key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
+                href={tab.href}
                 aria-label={tab.label}
                 aria-current={isActive ? "page" : undefined}
-                className="group flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 pt-1 pb-2 transition-transform duration-200 active:scale-90"
+                className="flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 pt-1 pb-2 transition-transform duration-200 active:scale-90"
               >
                 <div
                   className={cn(
@@ -84,7 +93,7 @@ export function AppShell({ children }: AppShellProps) {
                 >
                   {tab.label}
                 </span>
-              </button>
+              </Link>
             );
           })}
         </nav>

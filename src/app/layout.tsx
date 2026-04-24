@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppShell } from "@/components/app-shell";
 import { OnboardingGate } from "@/features/auth/onboarding-gate";
+import { PasswordGate } from "@/features/auth/password-gate";
 import { UserProvider } from "@/features/auth/use-user";
 import "./globals.css";
 
@@ -40,11 +41,13 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
       <body>
-        <UserProvider>
-          <OnboardingGate>
-            <AppShell>{children}</AppShell>
-          </OnboardingGate>
-        </UserProvider>
+        <PasswordGate>
+          <UserProvider>
+            <OnboardingGate>
+              <AppShell>{children}</AppShell>
+            </OnboardingGate>
+          </UserProvider>
+        </PasswordGate>
       </body>
     </html>
   );
