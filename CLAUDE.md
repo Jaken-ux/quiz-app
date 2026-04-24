@@ -45,3 +45,55 @@ Jobba med mock-data först. Backend tillkommer när flödet känns rätt.
 
 ## Referens
 Se docs/PROJECT.md för full projektplan.
+
+## App-känsla, inte webb-känsla
+
+Detta är en webb som SKA KÄNNAS SOM EN NATIV APP. Inte en responsiv webb.
+Det här är ett starkt direktiv och ska genomsyra all UI-kod.
+
+### Prototyp-fas (nuvarande)
+Appen körs i en browser och det är okej att browser-chrome (adressfält,
+flikar) är synligt. PWA-installation är INTE prioriterat nu — fokus är
+att allt innanför viewporten ska kännas som en app.
+
+### Krav på app-känsla
+- Hela appen wrappas i en AppShell med bottom-nav (Hem, Stats, Profil)
+- Safe areas respekteras (env(safe-area-inset-*))
+- 100dvh används, inte 100vh (undviker Safari-bråk)
+- Input font-size minst 16px (förhindrar iOS auto-zoom vid fokus)
+- Skärm-övergångar animeras med Framer Motion (slide/fade, 200-300ms)
+- Bottom sheets istället för mitt-på-skärmen-modaler
+- Pull-to-refresh i scroll-feeds där det är relevant
+- Skeleton loaders, inte spinners
+- Ingen text-markering på knappar (user-select: none på interaktiva element)
+- Tryckfeedback på alla knappar (scale-down eller opacity-dip)
+
+### Onboarding-flöde (obligatoriskt innan appen kan användas)
+1. Välkomstskärm med kort intro
+2. Välj avatar (bibliotek av färdiga illustrationer)
+3. Välj användarnamn
+4. Landar i hem-fliken
+
+### Konto i prototyp-fas
+- Sparas i localStorage, inte i backend
+- Nyckel: `quiz-app.user` → { username, avatar, createdAt }
+- Om ingen user finns → visa onboarding
+- Om user finns → hoppa direkt till hem
+
+### Förbjudet i UI
+- Hamburger-menyer
+- Breadcrumbs
+- Footer med länkar eller "om oss"-info
+- "Desktop-vyer" eller bredare layouts för stora skärmar
+
+### Desktop-beteende
+På skärmar bredare än 430px:
+- App renderas centrerat i en mobil-ram (430px bred)
+- Runtom visas en neutral bakgrund
+- Detta för att testare på datorn ska se "app i en telefon"
+
+### Senare (efter prototyp-fasen)
+- PWA-manifest för installerbar app
+- Service worker för offline-stöd
+- iOS-meta-taggar för full-screen-läge
+- Push-notiser (endast i native via Capacitor)

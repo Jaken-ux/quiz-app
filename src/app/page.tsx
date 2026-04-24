@@ -1,65 +1,103 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo, useState } from "react";
+
+import { quizzes } from "@/data/quizzes";
+import { useUser } from "@/features/auth/use-user";
+import {
+  CategoryChips,
+  type CategoryFilter,
+} from "@/features/quiz/category-chips";
+import { QuizCard } from "@/features/quiz/quiz-card";
+
+const PEP_MESSAGES = [
+  "Redo för dagens utmaning?",
+  "Vad ska vi spela idag?",
+  "Dags att knipa en topplacering!",
+  "Nya frågor väntar 🎯",
+  "Hur smart känner du dig idag?",
+  "Ett snabbt quiz innan kaffe?",
+  "Dags att visa vad du kan 💪",
+];
+
+function getPepMessage(): string {
+  const idx = new Date().getDay();
+  return PEP_MESSAGES[idx % PEP_MESSAGES.length];
+}
+
+export default function HomePage() {
+  const { user } = useUser();
+  const [filter, setFilter] = useState<CategoryFilter>("all");
+
+  const visible = useMemo(
+    () =>
+      filter === "all"
+        ? quizzes
+        : quizzes.filter((q) => q.category === filter),
+    [filter],
+  );
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="flex flex-col">
+      <header className="relative overflow-hidden rounded-b-[2.5rem] bg-gradient-to-br from-[#E63946] via-[#EE5A6A] to-[#F06292] px-6 pt-[calc(env(safe-area-inset-top)+1.75rem)] pb-10">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-10 -right-10 h-44 w-44 rounded-full bg-white/15 blur-2xl"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-4 bottom-2 h-24 w-24 rounded-full bg-[#FFB703]/30 blur-xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-8 top-6 size-3 rounded-full bg-white/70"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-20 top-16 size-2 rounded-full bg-white/50"
+        />
+
+        <div className="relative flex items-center gap-4">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-white/25 text-4xl shadow-lg ring-4 ring-white/40 backdrop-blur">
+            {user?.avatar ?? "👋"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-black uppercase tracking-widest text-white/80">
+              Välkommen tillbaka
+            </p>
+            <h1 className="truncate text-2xl font-extrabold text-white drop-shadow-sm">
+              Hej {user?.username ?? "spelare"}!
+            </h1>
+            <p className="mt-0.5 text-sm font-semibold text-white/95">
+              {getPepMessage()}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <section className="px-6 pt-7">
+        <div className="flex items-end justify-between">
+          <h2 className="text-xl font-extrabold text-dark">Utforska</h2>
+          <p className="text-xs font-bold text-muted-foreground">
+            {visible.length} quiz
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        <CategoryChips
+          active={filter}
+          onChange={setFilter}
+          className="mt-3"
+        />
+      </section>
+
+      <section className="flex flex-col gap-4 px-6 pt-5 pb-4">
+        {visible.length === 0 ? (
+          <p className="py-8 text-center text-sm font-medium text-muted-foreground">
+            Inga quiz i den här kategorin än.
+          </p>
+        ) : (
+          visible.map((quiz) => <QuizCard key={quiz.id} quiz={quiz} />)
+        )}
+      </section>
     </div>
   );
 }
