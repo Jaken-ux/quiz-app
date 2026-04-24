@@ -1,55 +1,31 @@
 "use client";
 
 import {
-  CATEGORIES,
-  CATEGORY_EMOJI,
-  CATEGORY_LABEL,
-  CATEGORY_SOFT_CHIP,
-} from "@/features/quiz/category-meta";
+  COLLECTIONS,
+  type CollectionId,
+} from "@/features/quiz/collections";
 import { cn } from "@/lib/utils";
-import type { Category } from "@/types/quiz";
 
-export type CategoryFilter = Category | "all";
-
-type CategoryChipsProps = {
-  active: CategoryFilter | null;
-  onChange: (filter: CategoryFilter) => void;
+type CollectionChipsProps = {
+  active: CollectionId | null;
+  onChange: (id: CollectionId) => void;
   className?: string;
 };
 
-type ChipItem = {
-  id: CategoryFilter;
-  label: string;
-  emoji: string;
-};
-
-const ITEMS: ChipItem[] = [
-  { id: "all", label: "Alla", emoji: "✨" },
-  ...CATEGORIES.map<ChipItem>((c) => ({
-    id: c,
-    label: CATEGORY_LABEL[c],
-    emoji: CATEGORY_EMOJI[c],
-  })),
-];
-
-export function CategoryChips({
+export function CollectionChips({
   active,
   onChange,
   className,
-}: CategoryChipsProps) {
+}: CollectionChipsProps) {
   return (
     <div className={cn("relative", className)}>
       <div
         role="tablist"
-        aria-label="Filtrera på kategori"
+        aria-label="Samlingar"
         className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {ITEMS.map((item) => {
+        {COLLECTIONS.map((item) => {
           const isActive = active === item.id;
-          const inactiveClass =
-            item.id === "all"
-              ? "bg-white text-dark ring-1 ring-black/5"
-              : CATEGORY_SOFT_CHIP[item.id];
           return (
             <button
               key={item.id}
@@ -60,8 +36,8 @@ export function CategoryChips({
               className={cn(
                 "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold whitespace-nowrap transition-all duration-150 active:scale-95",
                 isActive
-                  ? "scale-105 bg-primary text-primary-foreground shadow-[0_8px_20px_-6px_rgba(230,57,70,0.55)]"
-                  : inactiveClass,
+                  ? "scale-105 bg-dark text-white shadow-[0_8px_20px_-6px_rgba(29,53,87,0.55)]"
+                  : "bg-white text-dark ring-1 ring-dark/15",
               )}
             >
               <span aria-hidden className="text-base leading-none">

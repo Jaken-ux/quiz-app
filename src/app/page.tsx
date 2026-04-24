@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
-import { quizzes } from "@/data/quizzes";
 import { useUser } from "@/features/auth/use-user";
+import { CATEGORY_LABEL } from "@/features/quiz/category-meta";
+import { CategoryChips } from "@/features/quiz/category-chips";
+import { CollectionChips } from "@/features/quiz/collection-chips";
 import {
-  CategoryChips,
-  type CategoryFilter,
-} from "@/features/quiz/category-chips";
+  type FilterId,
+  filterQuizzes,
+  isCategoryFilter,
+  isCollectionId,
+} from "@/features/quiz/collections";
+import { readPlays } from "@/features/quiz/plays-storage";
 import { QuizCard } from "@/features/quiz/quiz-card";
 
 const PEP_MESSAGES = [
@@ -20,22 +25,55 @@ const PEP_MESSAGES = [
   "Dags att visa vad du kan 💪",
 ];
 
+function useHasMounted(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
 function getPepMessage(): string {
   const idx = new Date().getDay();
   return PEP_MESSAGES[idx % PEP_MESSAGES.length];
 }
 
+function sectionHeading(filter: FilterId): string {
+  if (filter === "all") return "Utforska";
+  if (filter === "for-you") return "För dig";
+  if (filter === "top") return "Top 10 just nu";
+  if (filter === "featured") return "Utvalda av oss";
+  return CATEGORY_LABEL[filter];
+}
+
+function sectionSubline(filter: FilterId): string | null {
+  if (filter === "for-you") return "Baserat på det du spelar.";
+  if (filter === "top") return "De mest spelade just nu.";
+  if (filter === "featured") return "Handplockade av oss.";
+  return null;
+}
+
 export default function HomePage() {
   const { user } = useUser();
-  const [filter, setFilter] = useState<CategoryFilter>("all");
+  const mounted = useHasMounted();
+  const [filter, setFilter] = useState<FilterId>("all");
 
+  const plays = useMemo(() => (mounted ? readPlays() : []), [mounted]);
   const visible = useMemo(
-    () =>
-      filter === "all"
-        ? quizzes
-        : quizzes.filter((q) => q.category === filter),
-    [filter],
+    () => filterQuizzes(filter, plays),
+    [filter, plays],
   );
+
+  const activeCategory =
+    filter === "all"
+      ? "all"
+      : isCategoryFilter(filter)
+        ? filter
+        : null;
+  const activeCollection = isCollectionId(filter) ? filter : null;
+
+  const heading = sectionHeading(filter);
+  const subline = sectionSubline(filter);
 
   return (
     <div className="flex flex-col">
@@ -76,23 +114,38 @@ export default function HomePage() {
       </header>
 
       <section className="px-6 pt-7">
-        <div className="flex items-end justify-between">
-          <h2 className="text-xl font-extrabold text-dark">Utforska</h2>
-          <p className="text-xs font-bold text-muted-foreground">
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="truncate text-xl font-extrabold text-dark">
+              {heading}
+            </h2>
+            {subline && (
+              <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                {subline}
+              </p>
+            )}
+          </div>
+          <p className="shrink-0 text-xs font-bold text-muted-foreground">
             {visible.length} quiz
           </p>
         </div>
+
         <CategoryChips
-          active={filter}
+          active={activeCategory}
           onChange={setFilter}
           className="mt-3"
+        />
+        <CollectionChips
+          active={activeCollection}
+          onChange={setFilter}
+          className="mt-2"
         />
       </section>
 
       <section className="flex flex-col gap-4 px-6 pt-5 pb-4">
         {visible.length === 0 ? (
           <p className="py-8 text-center text-sm font-medium text-muted-foreground">
-            Inga quiz i den här kategorin än.
+            Inga quiz här än.
           </p>
         ) : (
           visible.map((quiz) => <QuizCard key={quiz.id} quiz={quiz} />)
