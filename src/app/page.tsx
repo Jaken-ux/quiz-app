@@ -15,11 +15,14 @@ import {
 } from "@/features/quiz/collections";
 import { QuizCard } from "@/features/quiz/quiz-card";
 import { usePlays } from "@/features/quiz/use-plays";
+import { useRegion } from "@/features/region/use-region";
 import { useRatings } from "@/features/training/use-ratings";
 import {
   getRatingLevel,
   getRatingLevelDisplay,
 } from "@/lib/rating";
+import { cn } from "@/lib/utils";
+import type { Region } from "@/types/quiz";
 
 const PEP_MESSAGES = [
   "Redo för dagens utmaning?",
@@ -55,11 +58,12 @@ export default function HomePage() {
   const { user } = useUser();
   const plays = usePlays();
   const { ratings } = useRatings();
+  const { region, setRegion } = useRegion();
   const [filter, setFilter] = useState<FilterId>("all");
 
   const visible = useMemo(
-    () => filterQuizzes(filter, plays),
-    [filter, plays],
+    () => filterQuizzes(filter, plays, region),
+    [filter, plays, region],
   );
 
   const playedIds = useMemo(
@@ -124,6 +128,55 @@ export default function HomePage() {
       </header>
 
       <section className="px-6 pt-5">
+        <RegionToggle region={region} onChange={setRegion} />
+      </section>
+
+      <section className="px-6 pt-6">
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="truncate text-xl font-extrabold text-dark">
+              {heading}
+            </h2>
+            {subline && (
+              <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                {subline}
+              </p>
+            )}
+          </div>
+          <p className="shrink-0 text-xs font-bold text-muted-foreground">
+            {visible.length} quiz
+          </p>
+        </div>
+
+        <CategoryChips
+          active={activeCategory}
+          onChange={setFilter}
+          className="mt-3"
+        />
+        <CollectionChips
+          active={activeCollection}
+          onChange={setFilter}
+          className="mt-2"
+        />
+      </section>
+
+      <section className="flex flex-col gap-4 px-6 pt-5 pb-4">
+        {visible.length === 0 ? (
+          <p className="py-8 text-center text-sm font-medium text-muted-foreground">
+            Inga quiz här än.
+          </p>
+        ) : (
+          visible.map((quiz) => (
+            <QuizCard
+              key={quiz.id}
+              quiz={quiz}
+              isPlayed={playedIds.has(quiz.id)}
+            />
+          ))
+        )}
+      </section>
+
+      <section className="px-6 pt-2 pb-4">
         <Link
           href="/traning"
           className="block rounded-3xl transition-transform active:scale-[0.99]"
@@ -172,51 +225,63 @@ export default function HomePage() {
           </div>
         </Link>
       </section>
-
-      <section className="px-6 pt-7">
-        <div className="flex items-end justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="truncate text-xl font-extrabold text-dark">
-              {heading}
-            </h2>
-            {subline && (
-              <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
-                {subline}
-              </p>
-            )}
-          </div>
-          <p className="shrink-0 text-xs font-bold text-muted-foreground">
-            {visible.length} quiz
-          </p>
-        </div>
-
-        <CategoryChips
-          active={activeCategory}
-          onChange={setFilter}
-          className="mt-3"
-        />
-        <CollectionChips
-          active={activeCollection}
-          onChange={setFilter}
-          className="mt-2"
-        />
-      </section>
-
-      <section className="flex flex-col gap-4 px-6 pt-5 pb-4">
-        {visible.length === 0 ? (
-          <p className="py-8 text-center text-sm font-medium text-muted-foreground">
-            Inga quiz här än.
-          </p>
-        ) : (
-          visible.map((quiz) => (
-            <QuizCard
-              key={quiz.id}
-              quiz={quiz}
-              isPlayed={playedIds.has(quiz.id)}
-            />
-          ))
-        )}
-      </section>
     </div>
+  );
+}
+
+type RegionToggleProps = {
+  region: Region;
+  onChange: (region: Region) => void;
+};
+
+function RegionToggle({ region, onChange }: RegionToggleProps) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Avdelning"
+      className="grid grid-cols-2 gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/5"
+    >
+      <RegionTab
+        active={region === "world"}
+        onClick={() => onChange("world")}
+        emoji="🌍"
+        label="Världen"
+      />
+      <RegionTab
+        active={region === "sweden"}
+        onClick={() => onChange("sweden")}
+        emoji="🇸🇪"
+        label="Sverige"
+      />
+    </div>
+  );
+}
+
+type RegionTabProps = {
+  active: boolean;
+  onClick: () => void;
+  emoji: string;
+  label: string;
+};
+
+function RegionTab({ active, onClick, emoji, label }: RegionTabProps) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-extrabold transition-all duration-200 active:scale-[0.97]",
+        active
+          ? "bg-primary text-primary-foreground shadow-[0_6px_14px_-6px_rgba(230,57,70,0.55)]"
+          : "text-muted-foreground",
+      )}
+    >
+      <span className="text-base leading-none" aria-hidden>
+        {emoji}
+      </span>
+      {label}
+    </button>
   );
 }

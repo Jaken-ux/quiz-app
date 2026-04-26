@@ -1,7 +1,7 @@
 import { quizzes } from "@/data/quizzes";
 import { CATEGORIES } from "@/features/quiz/category-meta";
 import type { Play } from "@/types/play";
-import type { Category, Quiz } from "@/types/quiz";
+import type { Category, Quiz, Region } from "@/types/quiz";
 
 export type CollectionId = "for-you" | "top" | "featured";
 
@@ -19,7 +19,11 @@ export const COLLECTIONS: CollectionMeta[] = [
 
 export type FilterId = "all" | Category | CollectionId;
 
-const FEATURED_IDS = ["harry-potter", "sagan-om-ringen", "marvel"];
+// Hand-picked highlights per region.
+const FEATURED_IDS: Record<Region, string[]> = {
+  world: ["harry-potter", "sagan-om-ringen", "marvel"],
+  sweden: ["sveriges-lan", "svensk-popmusik", "svenska-kandisar"],
+};
 const FOR_YOU_MIN_RESULTS = 3;
 const TOP_LIMIT = 10;
 
@@ -31,28 +35,31 @@ export function isCategoryFilter(id: string): id is Category {
   return (CATEGORIES as readonly string[]).includes(id);
 }
 
-export function getTopQuizzes(limit = TOP_LIMIT): Quiz[] {
+function inRegion(quiz: Quiz, region: Region): boolean {
+  return quiz.region === region;
+}
+
+export function getTopQuizzes(region: Region, limit = TOP_LIMIT): Quiz[] {
   return [...quizzes]
+    .filter((q) => inRegion(q, region))
     .sort((a, b) => b.likeCount - a.likeCount)
     .slice(0, limit);
 }
 
-export function getFeaturedQuizzes(): Quiz[] {
-  return FEATURED_IDS.map((id) => quizzes.find((q) => q.id === id)).filter(
-    (q): q is Quiz => q !== undefined,
-  );
+export function getFeaturedQuizzes(region: Region): Quiz[] {
+  return FEATURED_IDS[region]
+    .map((id) => quizzes.find((q) => q.id === id))
+    .filter((q): q is Quiz => q !== undefined && inRegion(q, region));
 }
 
-export function getForYouQuizzes(plays: Play[]): Quiz[] {
+export function getForYouQuizzes(plays: Play[], region: Region): Quiz[] {
+  const inRegionList = quizzes.filter((q) => inRegion(q, region));
+
   if (plays.length === 0) {
-    // Fresh user — surface featured picks with a few popular ones mixed in.
-    const featured = getFeaturedQuizzes();
-    const popular = getTopQuizzes(4);
+    const featured = getFeaturedQuizzes(region);
+    const popular = getTopQuizzes(region, 4);
     const seen = new Set(featured.map((q) => q.id));
-    return [
-      ...featured,
-      ...popular.filter((q) => !seen.has(q.id)),
-    ];
+    return [...featured, ...popular.filter((q) => !seen.has(q.id))];
   }
 
   const countByCategory = new Map<Category, number>();
@@ -70,15 +77,13 @@ export function getForYouQuizzes(plays: Play[]): Quiz[] {
     .slice(0, 2)
     .map(([cat]) => cat);
 
-  const matched = quizzes
+  const matched = inRegionList
     .filter((q) => topCategories.includes(q.category))
     .sort((a, b) => b.playCount - a.playCount);
 
   if (matched.length >= FOR_YOU_MIN_RESULTS) return matched;
 
-  // Pad with next-most-popular from other categories so the shelf never
-  // looks empty even for a user who's only tried one small category.
-  const padding = quizzes
+  const padding = inRegionList
     .filter((q) => !matched.some((m) => m.id === q.id))
     .sort((a, b) => b.playCount - a.playCount)
     .slice(0, FOR_YOU_MIN_RESULTS - matched.length);
@@ -86,10 +91,24 @@ export function getForYouQuizzes(plays: Play[]): Quiz[] {
   return [...matched, ...padding];
 }
 
-export function filterQuizzes(filter: FilterId, plays: Play[]): Quiz[] {
-  if (filter === "all") return quizzes;
-  if (filter === "for-you") return getForYouQuizzes(plays);
-  if (filter === "top") return getTopQuizzes(TOP_LIMIT);
-  if (filter === "featured") return getFeaturedQuizzes();
-  return quizzes.filter((q) => q.category === filter);
+export function filterQuizzes(
+  filter: FilterId,
+  plays: Play[],
+  region: Region,
+): Quiz[] {
+  if (filter === "all") {
+    return quizzes.filter((q) => inRegion(q, region));
+  }
+  if (filter === "for-you") {
+    return getForYouQuizzes(plays, region);
+  }
+  if (filter === "top") {
+    return getTopQuizzes(region, TOP_LIMIT);
+  }
+  if (filter === "featured") {
+    return getFeaturedQuizzes(region);
+  }
+  return quizzes.filter(
+    (q) => q.category === filter && inRegion(q, region),
+  );
 }

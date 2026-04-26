@@ -8,6 +8,8 @@ export type Category =
 
 export type Difficulty = "easy" | "medium" | "hard";
 
+export type Region = "world" | "sweden";
+
 export type Question = {
   id: string;
   text: string;
@@ -22,6 +24,7 @@ export type Quiz = {
   description: string;
   category: Category;
   difficulty: Difficulty;
+  region: Region;
   questionCount: number;
   estimatedMinutes: number;
   playCount: number;
