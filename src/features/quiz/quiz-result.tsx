@@ -50,18 +50,86 @@ function useHasMounted(): boolean {
   );
 }
 
-function getOfficialHeadline(correctRatio: number): string {
-  if (correctRatio >= 0.85) return "Otroligt! 🌟";
-  if (correctRatio >= 0.6) return "Snyggt jobbat! 🎉";
-  if (correctRatio >= 0.3) return "Bra försök! 💪";
-  return "Kanske en till runda?";
+const HEADLINES_HIGH = [
+  "Quizmästare på lös grund 🌟",
+  "Hjärnan på högvarv 🧠",
+  "Du är obotligt påläst 😎",
+];
+const HEADLINES_MID_HIGH = [
+  "Snyggt, nästan medel-svensk 🎉",
+  "Inte illa pinkat 💪",
+  "Snyggt babb 👏",
+];
+const HEADLINES_MID_LOW = [
+  "Gick sådär 🤷",
+  "Du skämde inte ut dig — direkt",
+  "Halvljumt men hederligt",
+];
+const HEADLINES_LOW = [
+  "Tystnad i baren ikväll 🤫",
+  "Kanske en till runda?",
+  "Övning ger färdighet (lovar)",
+];
+
+const SUBLINES_HIGH = [
+  "Det här bjöd du på.",
+  "Lite jävla bra, faktiskt.",
+  "Kanske dags att starta podd?",
+];
+const SUBLINES_MID_HIGH = [
+  "Du behärskar det här.",
+  "Sverige nickar uppskattande.",
+  "Bra jobb, fortsätt så.",
+];
+const SUBLINES_MID_LOW = [
+  "Några rätt är en start.",
+  "Kompisarna kommer skratta lagom.",
+  "Du tog dig igenom — det räknas.",
+];
+const SUBLINES_LOW = [
+  "Det här var inte din kategori.",
+  "Var snäll mot dig själv. Snart bättre.",
+  "Bättre än Bingolotto i alla fall.",
+];
+
+function pickFromBands(
+  correctRatio: number,
+  score: number,
+  bands: {
+    high: string[];
+    midHigh: string[];
+    midLow: string[];
+    low: string[];
+  },
+): string {
+  const list =
+    correctRatio >= 0.85
+      ? bands.high
+      : correctRatio >= 0.6
+        ? bands.midHigh
+        : correctRatio >= 0.3
+          ? bands.midLow
+          : bands.low;
+  const idx = Math.abs(Math.floor(score)) % list.length;
+  return list[idx];
 }
 
-function getOfficialSubline(correctRatio: number): string {
-  if (correctRatio >= 0.85) return "Du är en quiz-stjärna!";
-  if (correctRatio >= 0.6) return "Du behärskar det här.";
-  if (correctRatio >= 0.3) return "Några rätt är en start.";
-  return "Övning ger färdighet.";
+function getOfficialHeadline(correctRatio: number, score: number): string {
+  return pickFromBands(correctRatio, score, {
+    high: HEADLINES_HIGH,
+    midHigh: HEADLINES_MID_HIGH,
+    midLow: HEADLINES_MID_LOW,
+    low: HEADLINES_LOW,
+  });
+}
+
+function getOfficialSubline(correctRatio: number, score: number): string {
+  return pickFromBands(correctRatio, score, {
+    high: SUBLINES_HIGH,
+    midHigh: SUBLINES_MID_HIGH,
+    midLow: SUBLINES_MID_LOW,
+    low: SUBLINES_LOW,
+  });
 }
 
 function getTrainingHeadline(correctRatio: number): string {
@@ -108,10 +176,10 @@ export function QuizResult({
   const hasMounted = useHasMounted();
 
   const headline = isFirstAttempt
-    ? getOfficialHeadline(correctRatio)
+    ? getOfficialHeadline(correctRatio, totalScore)
     : getTrainingHeadline(correctRatio);
   const subline = isFirstAttempt
-    ? getOfficialSubline(correctRatio)
+    ? getOfficialSubline(correctRatio, totalScore)
     : getTrainingSubline(correctCount, officialPlay?.correctCount ?? null);
 
   const bgClass = isFirstAttempt

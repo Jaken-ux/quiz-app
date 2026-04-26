@@ -1,9 +1,11 @@
 # Sveriges Roligaste Quiz — Claude Code-instruktioner
 
 ## Om projektet
-Mobilförst quiz-app där användare spelar korta quiz och ser sin percentil-placering mot alla andra spelare. Varumärke: **Sveriges Roligaste Quiz**. Byggs först som webb (Next.js PWA), paketeras senare till native iOS/Android via Capacitor.
+**Sveriges Roligaste Quiz** är en humor-quiz-app — inte en allmänbildningsapp. Korta quiz om svenska kändisar, politiska blundrar, kuriosa, dialekter, kulturnostalgi och folkets tycke. Roligt först, kunskap sen. Spelarna ska skratta, dela med kompisar och säga "vänta lyssna här" — placering och rating finns kvar som krydda men är inte huvudsaken.
 
-Samarbete med Instagram-kontot Sveriges Roligaste Klipp som driver trafik vid launch.
+Mobilförst webb (Next.js PWA), paketeras senare till native iOS/Android via Capacitor.
+
+Samarbete med Instagram-kontot **sverigesroligastevideor** (~452k följare) som driver trafik och delar quiz-klipp.
 
 ## Teknisk stack
 - Next.js 14+ med App Router

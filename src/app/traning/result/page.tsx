@@ -60,11 +60,38 @@ function useHasMounted(): boolean {
   );
 }
 
-function getHeadline(correctRatio: number): string {
-  if (correctRatio >= 0.85) return "Toppenövning! 💪";
-  if (correctRatio >= 0.6) return "Bra träning! 🎯";
-  if (correctRatio >= 0.3) return "Fortsätt så!";
-  return "Repetition är nyckeln.";
+const TRAINING_HEADLINES_HIGH = [
+  "Toppenövning! 💪",
+  "Hjärnan är tänd 🧠",
+  "Du smekte frågorna",
+];
+const TRAINING_HEADLINES_MID_HIGH = [
+  "Bra träning! 🎯",
+  "Snyggt babb",
+  "Du lär dig snabbt",
+];
+const TRAINING_HEADLINES_MID_LOW = [
+  "Fortsätt så!",
+  "Lite halvljumt — fixa nästa",
+  "Inget skrytsamt, men ok",
+];
+const TRAINING_HEADLINES_LOW = [
+  "Repetition är nyckeln.",
+  "Vi värmer upp 🤷",
+  "Kör en till — det blir bättre.",
+];
+
+function getHeadline(correctRatio: number, score: number): string {
+  const list =
+    correctRatio >= 0.85
+      ? TRAINING_HEADLINES_HIGH
+      : correctRatio >= 0.6
+        ? TRAINING_HEADLINES_MID_HIGH
+        : correctRatio >= 0.3
+          ? TRAINING_HEADLINES_MID_LOW
+          : TRAINING_HEADLINES_LOW;
+  const idx = Math.abs(Math.floor(score)) % list.length;
+  return list[idx];
 }
 
 export default function TrainingResultPage() {
@@ -132,7 +159,7 @@ function TrainingResultContent() {
     ratingDelta,
   } = data;
   const correctRatio = total > 0 ? correct / total : 0;
-  const headline = getHeadline(correctRatio);
+  const headline = getHeadline(correctRatio, score);
 
   const levelBefore = getRatingLevel(ratingBefore);
   const levelAfter = getRatingLevel(ratingAfter);

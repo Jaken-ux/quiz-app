@@ -78,7 +78,7 @@ export function Onboarding() {
               Vem är du?
             </h1>
             <p className="mt-2 max-w-[260px] text-sm font-semibold text-white/95">
-              Välj ett smeknamn och en avatar så kör vi igång!
+              Välj ett smeknamn och en quiz-doppelganger — sen kör vi.
             </p>
           </div>
         </div>
@@ -111,7 +111,9 @@ export function Onboarding() {
           </div>
 
           <div>
-            <p className="text-sm font-extrabold text-dark">Välj avatar</p>
+            <p className="text-sm font-extrabold text-dark">
+              Välj din quiz-doppelganger
+            </p>
             <div className="mt-3 grid grid-cols-3 gap-3">
               {AVATARS.map(({ emoji, bg }) => {
                 const isSelected = avatar === emoji;
@@ -152,7 +154,7 @@ export function Onboarding() {
               disabled={!canSubmit}
               className="h-14 w-full rounded-2xl text-base font-extrabold shadow-[0_12px_28px_-8px_rgba(230,57,70,0.55)] transition-all active:scale-[0.98] disabled:shadow-none"
             >
-              Kör! 🚀
+              Kör hårt 🚀
             </Button>
           </div>
         </div>

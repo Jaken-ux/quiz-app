@@ -104,12 +104,12 @@ export function computeStats(plays: Play[]): Stats {
   const rankTitle = rankForLevel(level);
 
   const perCategory: Record<Category, CategoryMastery> = {
-    musik: emptyMastery(),
-    film: emptyMastery(),
-    sport: emptyMastery(),
-    geografi: emptyMastery(),
-    historia: emptyMastery(),
-    allmänbildning: emptyMastery(),
+    kandisar: emptyMastery(),
+    politiska_blundrar: emptyMastery(),
+    sverige_kuriosa: emptyMastery(),
+    dialekt_sprak: emptyMastery(),
+    kultur_nostalgi: emptyMastery(),
+    folkets_tycke: emptyMastery(),
   };
 
   for (const play of plays) {
