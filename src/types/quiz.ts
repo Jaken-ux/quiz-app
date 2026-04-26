@@ -25,5 +25,6 @@ export type Quiz = {
   questionCount: number;
   estimatedMinutes: number;
   playCount: number;
+  likeCount: number;
   questions: Question[];
 };

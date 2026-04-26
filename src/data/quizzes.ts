@@ -10,6 +10,7 @@ export const quizzes: Quiz[] = [
     questionCount: 6,
     estimatedMinutes: 4,
     playCount: 2412,
+    likeCount: 612,
     questions: [
       {
         id: "90s-musik-1",
@@ -64,6 +65,7 @@ export const quizzes: Quiz[] = [
     questionCount: 10,
     estimatedMinutes: 5,
     playCount: 854,
+    likeCount: 318,
     questions: [
       {
         id: "svenska-os-medaljer-1",
@@ -161,6 +163,7 @@ export const quizzes: Quiz[] = [
     questionCount: 6,
     estimatedMinutes: 4,
     playCount: 2871,
+    likeCount: 731,
     questions: [
       {
         id: "varldens-huvudstader-1",
@@ -215,6 +218,7 @@ export const quizzes: Quiz[] = [
     questionCount: 7,
     estimatedMinutes: 3,
     playCount: 512,
+    likeCount: 94,
     questions: [],
   },
   {
@@ -226,6 +230,7 @@ export const quizzes: Quiz[] = [
     questionCount: 8,
     estimatedMinutes: 3,
     playCount: 1795,
+    likeCount: 482,
     questions: [],
   },
   {
@@ -237,6 +242,7 @@ export const quizzes: Quiz[] = [
     questionCount: 9,
     estimatedMinutes: 4,
     playCount: 1603,
+    likeCount: 412,
     questions: [],
   },
   {
@@ -248,6 +254,7 @@ export const quizzes: Quiz[] = [
     questionCount: 5,
     estimatedMinutes: 2,
     playCount: 2984,
+    likeCount: 537,
     questions: [],
   },
   {
@@ -259,6 +266,7 @@ export const quizzes: Quiz[] = [
     questionCount: 7,
     estimatedMinutes: 3,
     playCount: 1128,
+    likeCount: 281,
     questions: [],
   },
   {
@@ -270,6 +278,7 @@ export const quizzes: Quiz[] = [
     questionCount: 7,
     estimatedMinutes: 3,
     playCount: 1847,
+    likeCount: 924,
     questions: [
       {
         id: "harry-potter-1",
@@ -351,6 +360,7 @@ export const quizzes: Quiz[] = [
     questionCount: 7,
     estimatedMinutes: 3,
     playCount: 1295,
+    likeCount: 678,
     questions: [
       {
         id: "sagan-om-ringen-1",
@@ -409,6 +419,124 @@ export const quizzes: Quiz[] = [
     ],
   },
   {
+    id: "dinosaurier",
+    title: "Dinosaurier",
+    description: "Skräcködlornas värld — för dig som kan din paleontologi.",
+    category: "allmänbildning",
+    difficulty: "hard",
+    questionCount: 10,
+    estimatedMinutes: 5,
+    playCount: 1532,
+    likeCount: 624,
+    questions: [
+      {
+        id: "dinosaurier-1",
+        text: "Under vilken geologisk period levde Tyrannosaurus rex?",
+        options: ["Trias", "Jura", "Krita", "Devon"],
+        correctIndex: 2,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-2",
+        text: "Vad betyder ordet 'dinosaurie' direkt översatt från grekiskan?",
+        options: [
+          "Stor ödla",
+          "Skräcködla",
+          "Förhistoriskt djur",
+          "Urtidsreptil",
+        ],
+        correctIndex: 1,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-3",
+        text: "Hur stor var Velociraptor i verkligheten (jämfört med Jurassic Park-filmen)?",
+        options: [
+          "Lika stor som ett rådjur",
+          "Stor som en kalkon",
+          "Lika stor som en häst",
+          "Lika stor som i filmen",
+        ],
+        correctIndex: 1,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-4",
+        text: "Hur många horn hade en typisk Triceratops?",
+        options: ["1", "2", "3", "4"],
+        correctIndex: 2,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-5",
+        text: "Vad anses ha orsakat massutdöendet som tog kål på dinosaurierna?",
+        options: [
+          "Klimatförändring över miljoner år",
+          "Vulkanutbrott helt på egen hand",
+          "Konkurrens från tidiga däggdjur",
+          "En meteorit som slog ner i nuvarande Mexiko",
+        ],
+        correctIndex: 3,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-6",
+        text: "Pterosaurer (flygödlor) — vilket av följande stämmer?",
+        options: [
+          "De var en typ av dinosaurie",
+          "De var de tidigaste fåglarna",
+          "De var en egen reptilgrupp och INTE dinosaurier",
+          "De var däggdjur",
+        ],
+        correctIndex: 2,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-7",
+        text: "Archaeopteryx anses vara den evolutionära länken mellan vilka två grupper?",
+        options: [
+          "Fiskar och reptiler",
+          "Insekter och fåglar",
+          "Reptiler och däggdjur",
+          "Dinosaurier och fåglar",
+        ],
+        correctIndex: 3,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-8",
+        text: "Vilket av följande är typiskt för en sauropod?",
+        options: [
+          "Lång hals och svans, växtätande, fyrbent",
+          "Tvåbent rovdjur med vassa klor",
+          "Bepansrad kropp med taggsvans",
+          "Liten storlek och fjäderbeklädd",
+        ],
+        correctIndex: 0,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-9",
+        text: "Vilken anses vara den längsta kända köttätande dinosaurien?",
+        options: [
+          "Tyrannosaurus rex",
+          "Spinosaurus",
+          "Allosaurus",
+          "Megalosaurus",
+        ],
+        correctIndex: 1,
+        timeLimitSeconds: 12,
+      },
+      {
+        id: "dinosaurier-10",
+        text: "Hur långa kunde Tyrannosaurus rex största tänder bli (krona)?",
+        options: ["Cirka 5 cm", "Cirka 10 cm", "Cirka 20 cm", "Cirka 50 cm"],
+        correctIndex: 2,
+        timeLimitSeconds: 12,
+      },
+    ],
+  },
+  {
     id: "marvel",
     title: "Marvel-universumet",
     description: "Från Iron Man till Thanos — testa dig på Marvel Cinematic Universe.",
@@ -417,6 +545,7 @@ export const quizzes: Quiz[] = [
     questionCount: 7,
     estimatedMinutes: 3,
     playCount: 2103,
+    likeCount: 1147,
     questions: [
       {
         id: "marvel-1",

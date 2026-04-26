@@ -43,6 +43,25 @@ Samarbete med Instagram-kontot Sveriges Roligaste Klipp som driver trafik vid la
 
 Jobba med mock-data först. Backend tillkommer när flödet känns rätt.
 
+## Hybrid-modell: Quiz vs Träna
+
+Appen har två lägen som existerar parallellt:
+
+**Quiz-läget**: Fasta utmaningar med samma frågor för alla spelare.
+Första försöket räknas officiellt och ger percentil-placering. Efterföljande
+försök är "träningsläge" — visar resultat men ändrar inte placering.
+Veckans quiz, månadens quiz och alla signatur-quiz tillhör detta läge.
+
+**Träna-läget** (byggs i nästa fas): Endless-sessions där frågor dras random
+ur en pool baserat på kategori+svårighet. Inget officiellt resultat — istället
+en rating per kategori som rör sig upp/ner. Två lägen: Klassisk (15s/fråga)
+och Snabb (7s/fråga, dubbla rating-effekten).
+
+Visuellt språk:
+- Quiz-läge officiellt: röd primär, "ranking"-känsla (rosetter, percentil)
+- Quiz-läge träning: blå/grön accent, "övning"-känsla
+- Träna-läge: separat estetik (kommer i nästa fas)
+
 ## Referens
 Se docs/PROJECT.md för full projektplan.
 

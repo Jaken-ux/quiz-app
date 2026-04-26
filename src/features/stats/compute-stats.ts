@@ -88,9 +88,13 @@ export function computeStats(plays: Play[]): Stats {
   const correctAnswers = plays.reduce((sum, p) => sum + p.correctCount, 0);
   const totalAnswers = plays.reduce((sum, p) => sum + p.totalQuestions, 0);
   const accuracy = totalAnswers > 0 ? correctAnswers / totalAnswers : 0;
+  // Only official first-attempt plays carry a meaningful percentile; training
+  // plays store 0 and would otherwise drag the average down.
+  const officialPlays = plays.filter((p) => p.isFirstAttempt);
   const avgPercentile =
-    plays.length > 0
-      ? plays.reduce((sum, p) => sum + p.percentile, 0) / plays.length
+    officialPlays.length > 0
+      ? officialPlays.reduce((sum, p) => sum + p.percentile, 0) /
+        officialPlays.length
       : 0;
 
   const level = xpToLevel(totalScore);

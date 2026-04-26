@@ -12,7 +12,7 @@ import {
   CATEGORY_ICON_BG,
   CATEGORY_LABEL,
 } from "@/features/quiz/category-meta";
-import { readPlays } from "@/features/quiz/plays-storage";
+import { readPlays } from "@/features/quiz/use-plays";
 import { BADGES } from "@/features/stats/badges";
 import {
   XP_PER_LEVEL_CONST,
@@ -190,7 +190,7 @@ export default function StatsPage() {
                     </div>
                   </div>
                   <div className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-extrabold text-dark shadow-md">
-                    Starta utmaning →
+                    Starta utmaning
                   </div>
                 </div>
               </div>

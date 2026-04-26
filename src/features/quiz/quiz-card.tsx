@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
@@ -9,11 +10,13 @@ import {
   DIFFICULTY_LABEL,
   DIFFICULTY_PILL,
 } from "@/features/quiz/category-meta";
+import { LikeButton } from "@/features/quiz/like-button";
 import { cn } from "@/lib/utils";
 import type { Quiz } from "@/types/quiz";
 
 type QuizCardProps = {
   quiz: Quiz;
+  isPlayed?: boolean;
 };
 
 function formatPlayCount(n: number): string {
@@ -23,7 +26,7 @@ function formatPlayCount(n: number): string {
   return formatted.replace(".", ",") + "k";
 }
 
-export function QuizCard({ quiz }: QuizCardProps) {
+export function QuizCard({ quiz, isPlayed = false }: QuizCardProps) {
   return (
     <Link
       href={`/quiz/${quiz.id}`}
@@ -37,6 +40,16 @@ export function QuizCard({ quiz }: QuizCardProps) {
           )}
           aria-hidden
         />
+
+        {isPlayed && (
+          <div
+            className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm"
+            aria-label="Du har spelat detta quiz"
+          >
+            <Check className="size-3" strokeWidth={3} />
+            Spelad
+          </div>
+        )}
 
         <div className="flex items-start gap-4">
           <div
@@ -52,7 +65,12 @@ export function QuizCard({ quiz }: QuizCardProps) {
             <p className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
               {CATEGORY_LABEL[quiz.category]}
             </p>
-            <h3 className="mt-0.5 text-lg font-extrabold leading-tight text-dark">
+            <h3
+              className={cn(
+                "mt-0.5 text-lg font-extrabold leading-tight text-dark",
+                isPlayed && "pr-20",
+              )}
+            >
               {quiz.title}
             </h3>
             <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground">
@@ -78,12 +96,12 @@ export function QuizCard({ quiz }: QuizCardProps) {
             <span aria-hidden>👥</span>
             {formatPlayCount(quiz.playCount)}
           </span>
-          <span
-            aria-hidden
-            className="ml-auto text-lg font-black text-primary"
-          >
-            →
-          </span>
+          <LikeButton
+            quizId={quiz.id}
+            baseCount={quiz.likeCount}
+            variant="compact"
+            className="ml-auto"
+          />
         </div>
       </Card>
     </Link>

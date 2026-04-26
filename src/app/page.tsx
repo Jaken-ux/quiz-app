@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 
 import { useUser } from "@/features/auth/use-user";
 import { CATEGORY_LABEL } from "@/features/quiz/category-meta";
@@ -12,8 +12,8 @@ import {
   isCategoryFilter,
   isCollectionId,
 } from "@/features/quiz/collections";
-import { readPlays } from "@/features/quiz/plays-storage";
 import { QuizCard } from "@/features/quiz/quiz-card";
+import { usePlays } from "@/features/quiz/use-plays";
 
 const PEP_MESSAGES = [
   "Redo för dagens utmaning?",
@@ -25,14 +25,6 @@ const PEP_MESSAGES = [
   "Dags att visa vad du kan 💪",
 ];
 
-function useHasMounted(): boolean {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-}
-
 function getPepMessage(): string {
   const idx = new Date().getDay();
   return PEP_MESSAGES[idx % PEP_MESSAGES.length];
@@ -41,27 +33,31 @@ function getPepMessage(): string {
 function sectionHeading(filter: FilterId): string {
   if (filter === "all") return "Utforska";
   if (filter === "for-you") return "För dig";
-  if (filter === "top") return "Top 10 just nu";
+  if (filter === "top") return "Hetast just nu";
   if (filter === "featured") return "Utvalda av oss";
   return CATEGORY_LABEL[filter];
 }
 
 function sectionSubline(filter: FilterId): string | null {
   if (filter === "for-you") return "Baserat på det du spelar.";
-  if (filter === "top") return "De mest spelade just nu.";
+  if (filter === "top") return "Mest gillade just nu.";
   if (filter === "featured") return "Handplockade av oss.";
   return null;
 }
 
 export default function HomePage() {
   const { user } = useUser();
-  const mounted = useHasMounted();
+  const plays = usePlays();
   const [filter, setFilter] = useState<FilterId>("all");
 
-  const plays = useMemo(() => (mounted ? readPlays() : []), [mounted]);
   const visible = useMemo(
     () => filterQuizzes(filter, plays),
     [filter, plays],
+  );
+
+  const playedIds = useMemo(
+    () => new Set(plays.map((p) => p.quizId)),
+    [plays],
   );
 
   const activeCategory =
@@ -148,7 +144,13 @@ export default function HomePage() {
             Inga quiz här än.
           </p>
         ) : (
-          visible.map((quiz) => <QuizCard key={quiz.id} quiz={quiz} />)
+          visible.map((quiz) => (
+            <QuizCard
+              key={quiz.id}
+              quiz={quiz}
+              isPlayed={playedIds.has(quiz.id)}
+            />
+          ))
         )}
       </section>
     </div>

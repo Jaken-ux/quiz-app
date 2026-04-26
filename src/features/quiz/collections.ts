@@ -13,7 +13,7 @@ export type CollectionMeta = {
 
 export const COLLECTIONS: CollectionMeta[] = [
   { id: "for-you", label: "För dig", emoji: "⭐" },
-  { id: "top", label: "Top 10", emoji: "🔥" },
+  { id: "top", label: "Hetast", emoji: "🔥" },
   { id: "featured", label: "Utvalda", emoji: "💎" },
 ];
 
@@ -33,7 +33,7 @@ export function isCategoryFilter(id: string): id is Category {
 
 export function getTopQuizzes(limit = TOP_LIMIT): Quiz[] {
   return [...quizzes]
-    .sort((a, b) => b.playCount - a.playCount)
+    .sort((a, b) => b.likeCount - a.likeCount)
     .slice(0, limit);
 }
 
