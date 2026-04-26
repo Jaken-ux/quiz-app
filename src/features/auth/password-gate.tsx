@@ -113,7 +113,10 @@ function PasswordPrompt({ onUnlock }: PasswordPromptProps) {
           />
 
           <div className="relative">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-white backdrop-blur">
+            <p className="text-[11px] font-black uppercase tracking-widest text-white/80">
+              Sveriges Roligaste Quiz
+            </p>
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-white backdrop-blur">
               🔒 Privat
             </div>
             <h1 className="mt-4 text-4xl font-extrabold leading-[1.05] text-white drop-shadow-sm">

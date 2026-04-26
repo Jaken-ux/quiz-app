@@ -18,8 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Quiz-app",
-  description: "Spela korta quiz och se hur du placerar dig mot alla andra.",
+  title: "Sveriges Roligaste Quiz",
+  description:
+    "Korta quiz, riktig kunskap, rolig konkurrens — i din ficka.",
 };
 
 export const viewport: Viewport = {

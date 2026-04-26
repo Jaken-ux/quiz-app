@@ -1,7 +1,7 @@
-# Quiz-app — Claude Code-instruktioner
+# Sveriges Roligaste Quiz — Claude Code-instruktioner
 
 ## Om projektet
-Mobilförst quiz-app där användare spelar korta quiz och ser sin percentil-placering mot alla andra spelare. Byggs först som webb (Next.js PWA), paketeras senare till native iOS/Android via Capacitor.
+Mobilförst quiz-app där användare spelar korta quiz och ser sin percentil-placering mot alla andra spelare. Varumärke: **Sveriges Roligaste Quiz**. Byggs först som webb (Next.js PWA), paketeras senare till native iOS/Android via Capacitor.
 
 Samarbete med Instagram-kontot Sveriges Roligaste Klipp som driver trafik vid launch.
 
