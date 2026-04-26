@@ -13,7 +13,10 @@ import {
   type NextSuggestion,
 } from "@/features/quiz/next-quiz";
 import { QuizIntro } from "@/features/quiz/quiz-intro";
-import { QuizPlay, type Answer } from "@/features/quiz/quiz-play";
+import {
+  PlayQuestions,
+  type Answer,
+} from "@/features/quiz/play-questions";
 import { QuizResult } from "@/features/quiz/quiz-result";
 import {
   createPlay,
@@ -63,8 +66,11 @@ export default function QuizPage({ params }: QuizPageProps) {
 
   if (phase.kind === "playing") {
     return (
-      <QuizPlay
-        quiz={quiz}
+      <PlayQuestions
+        questions={quiz.questions}
+        theme="quiz"
+        abortTitle="Avbryta quiz?"
+        abortConfirmLabel="Avbryt quiz"
         onComplete={(answers) => {
           const totalScore = answers.reduce((sum, a) => sum + a.score, 0);
           const correctCount = answers.filter((a) => a.correct).length;

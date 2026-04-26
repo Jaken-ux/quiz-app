@@ -6,13 +6,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { computeQuestionScore } from "@/features/quiz/game-utils";
 import { cn } from "@/lib/utils";
-import type { Quiz } from "@/types/quiz";
+import type { Question } from "@/types/quiz";
 
 export type Answer = {
   questionId: string;
   selectedIndex: number | null;
   correct: boolean;
   score: number;
+  timeSpentMs: number;
 };
 
 type LockedState = {
@@ -23,20 +24,58 @@ type LockedState = {
 
 const ADVANCE_DELAY_MS = 1500;
 
-type QuizPlayProps = {
-  quiz: Quiz;
+export type PlayTheme = "quiz" | "training";
+
+type ThemeStyles = {
+  bgClass: string;
+  progressBarClass: string;
+  letterPillClass: string;
+};
+
+const THEMES: Record<PlayTheme, ThemeStyles> = {
+  quiz: {
+    bgClass:
+      "bg-gradient-to-b from-[#FFF4DE] via-[#FCE7F3] to-[#EEF2FF]",
+    progressBarClass: "bg-primary",
+    letterPillClass: "bg-primary/10 text-primary",
+  },
+  training: {
+    bgClass:
+      "bg-gradient-to-b from-[#E0F7FA] via-[#D1FAE5] to-[#FEFCE8]",
+    progressBarClass: "bg-sky-500",
+    letterPillClass: "bg-sky-100 text-sky-700",
+  },
+};
+
+type PlayQuestionsProps = {
+  questions: Question[];
+  theme?: PlayTheme;
+  /** Subtitle shown next to "Fråga X av Y" (e.g. "Träning · Musik · Medel"). */
+  subtitle?: string;
+  abortTitle?: string;
+  abortDescription?: string;
+  abortConfirmLabel?: string;
   onComplete: (answers: Answer[]) => void;
   onAbort: () => void;
 };
 
-export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
+export function PlayQuestions({
+  questions,
+  theme = "quiz",
+  subtitle,
+  abortTitle = "Avbryta quiz?",
+  abortDescription = "Dina svar kommer att förloras.",
+  abortConfirmLabel = "Avbryt quiz",
+  onComplete,
+  onAbort,
+}: PlayQuestionsProps) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [locked, setLocked] = useState<LockedState | null>(null);
   const [showAbortDialog, setShowAbortDialog] = useState(false);
 
-  const question = quiz.questions[questionIndex];
-  const totalQuestions = quiz.questions.length;
+  const question = questions[questionIndex];
+  const totalQuestions = questions.length;
 
   const startTimeRef = useRef<number>(0);
   const lockedRef = useRef<LockedState | null>(null);
@@ -63,7 +102,7 @@ export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
   }, [locked, answers, questionIndex, totalQuestions, onComplete]);
 
   const handleSelect = (index: number) => {
-    if (lockedRef.current) return;
+    if (lockedRef.current || !question) return;
     const correct = index === question.correctIndex;
     // eslint-disable-next-line react-hooks/purity -- event handler, runs on click not during render
     const elapsedMs = performance.now() - startTimeRef.current;
@@ -80,6 +119,7 @@ export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
         selectedIndex: index,
         correct,
         score,
+        timeSpentMs: elapsedMs,
       },
     };
     lockedRef.current = next;
@@ -87,7 +127,7 @@ export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
   };
 
   const handleTimerEnd = useCallback(() => {
-    if (lockedRef.current) return;
+    if (lockedRef.current || !question) return;
     const next: LockedState = {
       selectedIndex: null,
       correct: false,
@@ -96,22 +136,34 @@ export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
         selectedIndex: null,
         correct: false,
         score: 0,
+        timeSpentMs: question.timeLimitSeconds * 1000,
       },
     };
     lockedRef.current = next;
     setLocked(next);
-  }, [question.id]);
+  }, [question]);
+
+  if (!question) {
+    return null;
+  }
 
   const progressPct =
     ((questionIndex + (locked ? 1 : 0)) / totalQuestions) * 100;
 
+  const styles = THEMES[theme];
+
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-gradient-to-b from-[#FFF4DE] via-[#FCE7F3] to-[#EEF2FF] px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6">
+    <div
+      className={cn(
+        "relative flex h-full flex-col overflow-hidden px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6",
+        styles.bgClass,
+      )}
+    >
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => setShowAbortDialog(true)}
-          aria-label="Avbryt quiz"
+          aria-label={abortConfirmLabel}
           className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-transform active:scale-90"
         >
           <ArrowLeft className="size-5 text-dark" />
@@ -119,10 +171,14 @@ export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
         <div className="flex-1">
           <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
             Fråga {questionIndex + 1} av {totalQuestions}
+            {subtitle ? ` · ${subtitle}` : ""}
           </p>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-black/10">
             <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                styles.progressBarClass,
+              )}
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -184,7 +240,7 @@ export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
                 const labelClass =
                   isLocked && (isCorrect || isSelected)
                     ? "bg-white/25 text-white"
-                    : "bg-primary/10 text-primary";
+                    : styles.letterPillClass;
 
                 return (
                   <motion.button
@@ -239,6 +295,9 @@ export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
         {showAbortDialog && (
           <AbortDialog
             key="abort"
+            title={abortTitle}
+            description={abortDescription}
+            confirmLabel={abortConfirmLabel}
             onConfirm={onAbort}
             onCancel={() => setShowAbortDialog(false)}
           />
@@ -249,11 +308,20 @@ export function QuizPlay({ quiz, onComplete, onAbort }: QuizPlayProps) {
 }
 
 type AbortDialogProps = {
+  title: string;
+  description: string;
+  confirmLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
 
-function AbortDialog({ onConfirm, onCancel }: AbortDialogProps) {
+function AbortDialog({
+  title,
+  description,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: AbortDialogProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -271,9 +339,9 @@ function AbortDialog({ onConfirm, onCancel }: AbortDialogProps) {
         className="w-full rounded-t-[2rem] bg-white p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] shadow-[0_-8px_32px_-4px_rgba(29,53,87,0.25)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <h3 className="text-xl font-extrabold text-dark">Avbryta quiz?</h3>
+        <h3 className="text-xl font-extrabold text-dark">{title}</h3>
         <p className="mt-1 text-sm font-medium text-muted-foreground">
-          Dina svar kommer att förloras.
+          {description}
         </p>
         <div className="mt-5 flex flex-col gap-2">
           <button
@@ -281,7 +349,7 @@ function AbortDialog({ onConfirm, onCancel }: AbortDialogProps) {
             onClick={onConfirm}
             className="h-12 w-full rounded-2xl bg-rose-500 font-extrabold text-white transition-transform active:scale-[0.98]"
           >
-            Avbryt quiz
+            {confirmLabel}
           </button>
           <button
             type="button"

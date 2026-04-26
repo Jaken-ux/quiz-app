@@ -37,7 +37,10 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const hideNav = pathname?.startsWith("/quiz/") ?? false;
+  const hideNav =
+    pathname?.startsWith("/quiz/") ||
+    pathname === "/traning/session" ||
+    false;
   const activeTab = activeTabFromPath(pathname);
 
   return (

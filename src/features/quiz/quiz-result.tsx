@@ -17,7 +17,7 @@ import {
   reasonLabel,
   type NextSuggestion,
 } from "@/features/quiz/next-quiz";
-import type { Answer } from "@/features/quiz/quiz-play";
+import type { Answer } from "@/features/quiz/play-questions";
 import { cn } from "@/lib/utils";
 import type { Play } from "@/types/play";
 import type { Quiz } from "@/types/quiz";

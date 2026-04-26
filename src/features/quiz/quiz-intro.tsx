@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
   const isTrainingNext = officialPlay !== null;
 
   return (
-    <div className="flex h-full flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
+    <div className="flex min-h-full flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
       <button
         type="button"
         onClick={() => router.push("/")}
@@ -128,6 +129,7 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
               <p className="mt-2 text-center text-xs font-semibold text-muted-foreground">
                 Träningsförsök — påverkar inte din placering.
               </p>
+              <TrainingMoreLink quiz={quiz} />
             </>
           ) : (
             <>
@@ -141,6 +143,7 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
               <p className="mt-2 text-center text-xs font-semibold text-amber-700">
                 🏆 Ditt första försök — räknas officiellt.
               </p>
+              <TrainingMoreLink quiz={quiz} />
             </>
           )}
         </div>
@@ -196,6 +199,25 @@ function TrainingBanner({ play }: TrainingBannerProps) {
         </p>
       </div>
     </div>
+  );
+}
+
+type TrainingMoreLinkProps = {
+  quiz: Quiz;
+};
+
+function TrainingMoreLink({ quiz }: TrainingMoreLinkProps) {
+  const params = new URLSearchParams({
+    category: quiz.category,
+    difficulty: quiz.difficulty,
+  });
+  return (
+    <Link
+      href={`/traning?${params.toString()}`}
+      className="mt-4 flex items-center justify-center gap-1.5 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-sky-700 ring-1 ring-sky-200 transition-transform active:scale-[0.98]"
+    >
+      💪 Träna fler {CATEGORY_LABEL[quiz.category].toLowerCase()}-frågor
+    </Link>
   );
 }
 

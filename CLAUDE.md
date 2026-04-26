@@ -52,15 +52,48 @@ Första försöket räknas officiellt och ger percentil-placering. Efterföljand
 försök är "träningsläge" — visar resultat men ändrar inte placering.
 Veckans quiz, månadens quiz och alla signatur-quiz tillhör detta läge.
 
-**Träna-läget** (byggs i nästa fas): Endless-sessions där frågor dras random
-ur en pool baserat på kategori+svårighet. Inget officiellt resultat — istället
-en rating per kategori som rör sig upp/ner. Två lägen: Klassisk (15s/fråga)
-och Snabb (7s/fråga, dubbla rating-effekten).
+**Träna-läget**: Endless-sessions där 10 random frågor dras ur en pool
+baserat på kategori + svårighet. Inget officiellt resultat — istället
+en rating per kategori (1000 vid start, rör sig 100–3000) som följer
+användarens kunskap upp och ner. Två lägen: Klassisk (15s/fråga) och
+Snabb (7s/fråga, dubbla rating-effekten).
+
+Träna-frågorna lever i `src/data/question-pool.ts` (taggade med
+kategori + svårighet) — separat från `src/data/quizzes.ts` som driver
+de fasta quizen. Utöka poolen genom att lägga till fler `QuestionPoolItem`
+i den listan; `drawQuestions(category, difficulty, count)` i
+`src/lib/training.ts` plockar slumpvis när en session startas.
 
 Visuellt språk:
 - Quiz-läge officiellt: röd primär, "ranking"-känsla (rosetter, percentil)
-- Quiz-läge träning: blå/grön accent, "övning"-känsla
-- Träna-läge: separat estetik (kommer i nästa fas)
+- Quiz-läge träning (replay av spelat quiz): blå/grön accent, mjukare ton
+- Träna-läge: blå/grön gradient genomgående, "övning och tillväxt"
+
+## Rating-systemet
+
+Varje kategori har sin egen rating som börjar på 1000 och rör sig
+mellan 100 och 3000. Bara Träna-läget påverkar rating; Quiz-läget
+ger percentil men inte rating.
+
+**Per fråga (`calculateQuestionDelta` i `src/lib/rating.ts`):**
+- Lätt: rätt +6, fel −10
+- Medel: rätt +10, fel −10
+- Svår: rätt +15, fel −5
+- Tidsbonus: rätt på under halva tidsgränsen ger +3
+
+**Per session:** sum av alla frågedelta, gånger 2 om läget är Snabb.
+
+**Nivåtrappa (färger används konsekvent där rating visas):**
+- 🌱 Nybörjare (`#9CA3AF`) — < 800
+- 💙 Hängiven (`#3B82F6`) — 800–1199
+- 🌟 Skicklig (`#10B981`) — 1200–1599
+- 🏅 Expert (`#A855F7`) — 1600–1999
+- 👑 Mästare (`#F59E0B`) — 2000+
+
+Rating sparas i localStorage under `quiz-app.ratings` som en map
+keyad på kategori. `useRatings()` ger reaktiv åtkomst,
+`updateRating(category, delta)` skriver. Ingen rating decay över
+tid — bara prestation flyttar siffran.
 
 ## Referens
 Se docs/PROJECT.md för full projektplan.

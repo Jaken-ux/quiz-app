@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useUser } from "@/features/auth/use-user";
@@ -14,6 +15,11 @@ import {
 } from "@/features/quiz/collections";
 import { QuizCard } from "@/features/quiz/quiz-card";
 import { usePlays } from "@/features/quiz/use-plays";
+import { useRatings } from "@/features/training/use-ratings";
+import {
+  getRatingLevel,
+  getRatingLevelDisplay,
+} from "@/lib/rating";
 
 const PEP_MESSAGES = [
   "Redo för dagens utmaning?",
@@ -48,6 +54,7 @@ function sectionSubline(filter: FilterId): string | null {
 export default function HomePage() {
   const { user } = useUser();
   const plays = usePlays();
+  const { ratings } = useRatings();
   const [filter, setFilter] = useState<FilterId>("all");
 
   const visible = useMemo(
@@ -59,6 +66,13 @@ export default function HomePage() {
     () => new Set(plays.map((p) => p.quizId)),
     [plays],
   );
+
+  const topRating = useMemo(() => {
+    if (!ratings) return null;
+    const played = Object.values(ratings).filter((r) => r.gamesPlayed > 0);
+    if (played.length === 0) return null;
+    return played.reduce((best, r) => (r.rating > best.rating ? r : best));
+  }, [ratings]);
 
   const activeCategory =
     filter === "all"
@@ -108,6 +122,56 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      <section className="px-6 pt-5">
+        <Link
+          href="/traning"
+          className="block rounded-3xl transition-transform active:scale-[0.99]"
+        >
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500 via-teal-500 to-emerald-500 p-5 shadow-[0_14px_32px_-10px_rgba(14,165,233,0.5)]">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-6 -right-6 h-28 w-28 rounded-full bg-white/20 blur-xl"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-6 bottom-4 size-3 rounded-full bg-white/50"
+            />
+            <div className="relative">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/25 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur">
+                💪 Träningsläge
+              </div>
+              <h2 className="mt-3 text-xl font-extrabold leading-tight text-white drop-shadow-sm">
+                Pusha din kunskap
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-white/95">
+                Random frågor i den kategori du vill öva på. Räknas inte
+                officiellt — du följer din kunskap istället.
+              </p>
+              {ratings && (
+                <p className="mt-3 text-[11px] font-semibold text-white/85">
+                  {topRating
+                    ? (() => {
+                        const level = getRatingLevel(topRating.rating);
+                        const display = getRatingLevelDisplay(level);
+                        return (
+                          <>
+                            Din topprating: {topRating.rating} i{" "}
+                            {CATEGORY_LABEL[topRating.category]} ·{" "}
+                            {display.name} {display.emoji}
+                          </>
+                        );
+                      })()
+                    : "Spela din första session för att få en rating"}
+                </p>
+              )}
+              <div className="mt-4 flex h-11 items-center justify-center rounded-xl bg-white text-sm font-extrabold text-dark shadow-md">
+                Starta träning
+              </div>
+            </div>
+          </div>
+        </Link>
+      </section>
 
       <section className="px-6 pt-7">
         <div className="flex items-end justify-between gap-2">
