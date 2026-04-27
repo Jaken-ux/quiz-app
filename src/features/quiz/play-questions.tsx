@@ -4,64 +4,32 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { computeQuestionScore } from "@/features/quiz/game-utils";
+import { calculateQuestionScore } from "@/lib/scoring";
 import { cn } from "@/lib/utils";
+import type { SessionAnswer } from "@/types/play";
 import type { Question } from "@/types/quiz";
-
-export type Answer = {
-  questionId: string;
-  selectedIndex: number | null;
-  correct: boolean;
-  score: number;
-  timeSpentMs: number;
-};
 
 type LockedState = {
   selectedIndex: number | null;
   correct: boolean;
-  answer: Answer;
+  answer: SessionAnswer;
 };
 
 const ADVANCE_DELAY_MS = 1500;
 
-export type PlayTheme = "quiz" | "training";
-
-type ThemeStyles = {
-  bgClass: string;
-  progressBarClass: string;
-  letterPillClass: string;
-};
-
-const THEMES: Record<PlayTheme, ThemeStyles> = {
-  quiz: {
-    bgClass:
-      "bg-gradient-to-b from-[#FFF4DE] via-[#FCE7F3] to-[#EEF2FF]",
-    progressBarClass: "bg-primary",
-    letterPillClass: "bg-primary/10 text-primary",
-  },
-  training: {
-    bgClass:
-      "bg-gradient-to-b from-[#E0F7FA] via-[#D1FAE5] to-[#FEFCE8]",
-    progressBarClass: "bg-sky-500",
-    letterPillClass: "bg-sky-100 text-sky-700",
-  },
-};
-
 type PlayQuestionsProps = {
   questions: Question[];
-  theme?: PlayTheme;
-  /** Subtitle shown next to "Fråga X av Y" (e.g. "Träning · Musik · Medel"). */
+  /** Subtitle shown next to "Fråga X av Y". */
   subtitle?: string;
   abortTitle?: string;
   abortDescription?: string;
   abortConfirmLabel?: string;
-  onComplete: (answers: Answer[]) => void;
+  onComplete: (answers: SessionAnswer[]) => void;
   onAbort: () => void;
 };
 
 export function PlayQuestions({
   questions,
-  theme = "quiz",
   subtitle,
   abortTitle = "Avbryta quiz?",
   abortDescription = "Dina svar kommer att förloras.",
@@ -70,7 +38,7 @@ export function PlayQuestions({
   onAbort,
 }: PlayQuestionsProps) {
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Answer[]>([]);
+  const [answers, setAnswers] = useState<SessionAnswer[]>([]);
   const [locked, setLocked] = useState<LockedState | null>(null);
   const [showAbortDialog, setShowAbortDialog] = useState(false);
 
@@ -106,20 +74,17 @@ export function PlayQuestions({
     const correct = index === question.correctIndex;
     // eslint-disable-next-line react-hooks/purity -- event handler, runs on click not during render
     const elapsedMs = performance.now() - startTimeRef.current;
-    const timeLeftSec = Math.max(
-      0,
-      (question.timeLimitSeconds * 1000 - elapsedMs) / 1000,
-    );
-    const score = computeQuestionScore(correct, timeLeftSec);
+    const timeUsedSeconds = elapsedMs / 1000;
+    const result = calculateQuestionScore(question, correct, timeUsedSeconds);
     const next: LockedState = {
       selectedIndex: index,
       correct,
       answer: {
         questionId: question.id,
-        selectedIndex: index,
-        correct,
-        score,
-        timeSpentMs: elapsedMs,
+        wasCorrect: correct,
+        timeUsedSeconds,
+        scoreEarned: result.score,
+        percentileForQuestion: result.percentile,
       },
     };
     lockedRef.current = next;
@@ -128,15 +93,20 @@ export function PlayQuestions({
 
   const handleTimerEnd = useCallback(() => {
     if (lockedRef.current || !question) return;
+    const result = calculateQuestionScore(
+      question,
+      false,
+      question.timeLimitSeconds,
+    );
     const next: LockedState = {
       selectedIndex: null,
       correct: false,
       answer: {
         questionId: question.id,
-        selectedIndex: null,
-        correct: false,
-        score: 0,
-        timeSpentMs: question.timeLimitSeconds * 1000,
+        wasCorrect: false,
+        timeUsedSeconds: question.timeLimitSeconds,
+        scoreEarned: result.score,
+        percentileForQuestion: result.percentile,
       },
     };
     lockedRef.current = next;
@@ -150,13 +120,10 @@ export function PlayQuestions({
   const progressPct =
     ((questionIndex + (locked ? 1 : 0)) / totalQuestions) * 100;
 
-  const styles = THEMES[theme];
-
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col overflow-hidden px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6",
-        styles.bgClass,
+        "relative flex h-full flex-col overflow-hidden bg-gradient-to-b from-[#FFF4DE] via-[#FCE7F3] to-[#EEF2FF] px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6",
       )}
     >
       <div className="flex items-center gap-3">
@@ -175,10 +142,7 @@ export function PlayQuestions({
           </p>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-black/10">
             <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                styles.progressBarClass,
-              )}
+              className="h-full rounded-full bg-primary transition-all duration-500"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -240,7 +204,7 @@ export function PlayQuestions({
                 const labelClass =
                   isLocked && (isCorrect || isSelected)
                     ? "bg-white/25 text-white"
-                    : styles.letterPillClass;
+                    : "bg-primary/10 text-primary";
 
                 return (
                   <motion.button

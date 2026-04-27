@@ -2,15 +2,24 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { InterestPicker } from "@/features/auth/interest-picker";
 import { useUser } from "@/features/auth/use-user";
+import { readPlays } from "@/features/quiz/use-plays";
+import {
+  computeStats,
+  type InterestMastery,
+} from "@/features/stats/compute-stats";
 import {
   INTEREST_ICON_BG,
   INTEREST_META,
   interestToSlug,
 } from "@/lib/interests";
+import {
+  PROGRESSION_META,
+  type ProgressionLevel,
+} from "@/lib/progression";
 import { cn } from "@/lib/utils";
 import type { Interest } from "@/types/quiz";
 
@@ -34,12 +43,39 @@ function formatDate(iso: string): string {
   }
 }
 
+const PROGRESSION_RANK: Record<ProgressionLevel, number> = {
+  beginner: 0,
+  devoted: 1,
+  skilled: 2,
+  expert: 3,
+  master: 4,
+};
+
 export default function ProfilePage() {
   const { user, updateInterests } = useUser();
   const mounted = useHasMounted();
   const [editorOpen, setEditorOpen] = useState(false);
 
   const interests = user?.interests ?? [];
+
+  const plays = useMemo(() => (mounted ? readPlays() : []), [mounted]);
+  const stats = useMemo(() => computeStats(plays), [plays]);
+
+  const sortedInterests = useMemo(() => {
+    const list = (Object.entries(stats.perInterest) as [
+      Interest,
+      InterestMastery,
+    ][]).map(([interest, mastery]) => ({ interest, mastery }));
+    return list.sort((a, b) => {
+      // Played first (most questions), then by level desc.
+      if (a.mastery.questionsAnswered !== b.mastery.questionsAnswered) {
+        return b.mastery.questionsAnswered - a.mastery.questionsAnswered;
+      }
+      return (
+        PROGRESSION_RANK[b.mastery.level] - PROGRESSION_RANK[a.mastery.level]
+      );
+    });
+  }, [stats]);
 
   return (
     <div className="flex min-h-full flex-col pb-6">
@@ -115,14 +151,22 @@ export default function ProfilePage() {
         )}
       </section>
 
-      <div className="flex flex-col items-center gap-3 px-6 pt-10 pb-2 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
-          🚧
-        </div>
-        <p className="text-sm font-semibold text-dark">
-          Inställningar, vänner och topplistor är på väg hit.
+      <section className="px-6 pt-7">
+        <h2 className="text-lg font-extrabold text-dark">Min utveckling</h2>
+        <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+          Nivå per intresse — växer med antal frågor och hur väl du presterar.
         </p>
-      </div>
+
+        <div className="mt-3 flex flex-col gap-2.5">
+          {sortedInterests.map(({ interest, mastery }) => (
+            <ProgressionRow
+              key={interest}
+              interest={interest}
+              mastery={mastery}
+            />
+          ))}
+        </div>
+      </section>
 
       <InterestEditorSheet
         open={editorOpen}
@@ -134,6 +178,63 @@ export default function ProfilePage() {
         }}
       />
     </div>
+  );
+}
+
+type ProgressionRowProps = {
+  interest: Interest;
+  mastery: InterestMastery;
+};
+
+function ProgressionRow({ interest, mastery }: ProgressionRowProps) {
+  const meta = INTEREST_META[interest];
+  const levelMeta = PROGRESSION_META[mastery.level];
+  const played = mastery.questionsAnswered > 0;
+
+  return (
+    <Link
+      href={`/intresse/${interestToSlug(interest)}`}
+      className={cn(
+        "flex items-center gap-3 rounded-2xl bg-white p-3.5 shadow-sm ring-1 ring-black/5 transition-transform active:scale-[0.99]",
+        !played && "opacity-75",
+      )}
+    >
+      <div
+        className={cn(
+          "flex size-12 shrink-0 items-center justify-center rounded-xl text-2xl shadow-inner",
+          INTEREST_ICON_BG[interest],
+        )}
+        aria-hidden
+      >
+        {meta.emoji}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-extrabold text-dark">
+          {meta.name}
+        </p>
+        {played ? (
+          <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
+            {mastery.questionsAnswered}{" "}
+            {mastery.questionsAnswered === 1 ? "fråga" : "frågor"} ·{" "}
+            {mastery.averagePercentile}% snittpercentil
+          </p>
+        ) : (
+          <p className="text-[11px] font-semibold text-muted-foreground">
+            Inte spelat ännu
+          </p>
+        )}
+      </div>
+      <span
+        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black"
+        style={{
+          backgroundColor: `${levelMeta.color}1F`,
+          color: levelMeta.color,
+        }}
+      >
+        <span aria-hidden>{levelMeta.emoji}</span>
+        {levelMeta.name}
+      </span>
+    </Link>
   );
 }
 

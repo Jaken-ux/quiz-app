@@ -25,7 +25,7 @@ export function pickRandomQuiz(
   options: PickRandomOptions = {},
 ): Quiz | null {
   const { onlyInterest, userInterests = [], excludeIds = [] } = options;
-  const playable = allQuizzes.filter((q) => q.questions.length > 0);
+  const playable = allQuizzes.filter((q) => q.questionPool.length > 0);
   if (playable.length === 0) return null;
 
   const exclude = new Set(excludeIds);

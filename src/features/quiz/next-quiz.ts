@@ -16,7 +16,7 @@ export function pickNextQuiz(
   pool: Quiz[],
 ): NextSuggestion | null {
   const playable = pool.filter(
-    (q) => q.questions.length > 0 && q.id !== current.id,
+    (q) => q.questionPool.length > 0 && q.id !== current.id,
   );
   if (playable.length === 0) return null;
 

@@ -21,14 +21,15 @@ import type { Quiz } from "@/types/quiz";
 
 type QuizIntroProps = {
   quiz: Quiz;
-  officialPlay: Play | null;
+  /** Most recent official play, if any. Used to switch CTA copy. */
+  previousPlay: Play | null;
   onStart: () => void;
 };
 
-export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
+export function QuizIntro({ quiz, previousPlay, onStart }: QuizIntroProps) {
   const router = useRouter();
-  const hasQuestions = quiz.questions.length > 0;
-  const isTrainingNext = officialPlay !== null;
+  const hasPool = quiz.questionPool.length > 0;
+  const isReplay = previousPlay !== null;
   const lead = primaryInterest(quiz.interests);
   const leadMeta = INTEREST_META[lead];
 
@@ -44,9 +45,7 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
         Tillbaka
       </button>
 
-      {isTrainingNext && officialPlay && (
-        <TrainingBanner play={officialPlay} />
-      )}
+      {isReplay && previousPlay && <ReplayBanner play={previousPlay} />}
 
       <div className="mt-6 flex flex-1 flex-col">
         <div className="relative flex items-center gap-4 rounded-3xl bg-white p-5 shadow-[0_8px_28px_-10px_rgba(29,53,87,0.22)] ring-1 ring-black/5">
@@ -80,6 +79,11 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
           {quiz.description}
         </p>
 
+        <div className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-muted-foreground shadow-sm ring-1 ring-black/5">
+          <span aria-hidden>🔁</span>
+          {quiz.questionsPerSession} av {quiz.questionPool.length} random frågor
+        </div>
+
         <div className="mt-4">
           <LikeButton
             quizId={quiz.id}
@@ -91,8 +95,8 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Stat
             emoji="📝"
-            label="Frågor"
-            value={String(quiz.questionCount)}
+            label="Per spel"
+            value={String(quiz.questionsPerSession)}
           />
           <Stat
             emoji="⏱️"
@@ -111,7 +115,7 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
         </div>
 
         <div className="mt-auto pb-6">
-          {!hasQuestions ? (
+          {!hasPool ? (
             <div className="rounded-2xl bg-amber-100 p-5 text-center ring-1 ring-amber-200">
               <p className="text-lg font-extrabold text-amber-900">
                 Kommer snart!
@@ -120,17 +124,18 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
                 Vi jobbar på frågorna för det här quizet.
               </p>
             </div>
-          ) : isTrainingNext ? (
+          ) : isReplay ? (
             <>
               <Button
                 type="button"
                 onClick={onStart}
-                className="h-16 w-full rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500 text-lg font-extrabold text-white shadow-[0_12px_28px_-8px_rgba(14,165,233,0.55)] transition-all hover:from-sky-500 hover:to-emerald-500 active:scale-[0.98]"
+                className="h-16 w-full rounded-2xl text-lg font-extrabold shadow-[0_12px_28px_-8px_rgba(230,57,70,0.55)] transition-all active:scale-[0.98]"
               >
-                Spela igen (träning) 💪
+                Spela igen 🔁
               </Button>
               <p className="mt-2 text-center text-xs font-semibold text-muted-foreground">
-                Träningsförsök — påverkar inte din placering.
+                Ny mix av {quiz.questionsPerSession} frågor — påverkar inte din
+                officiella placering.
               </p>
             </>
           ) : (
@@ -153,27 +158,24 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
   );
 }
 
-type TrainingBannerProps = {
+type ReplayBannerProps = {
   play: Play;
 };
 
-function TrainingBanner({ play }: TrainingBannerProps) {
-  const accuracy =
-    play.totalQuestions > 0 ? play.correctCount / play.totalQuestions : 0;
-
+function ReplayBanner({ play }: ReplayBannerProps) {
   return (
     <div className="mt-4 overflow-hidden rounded-3xl bg-gradient-to-br from-sky-100 via-cyan-50 to-emerald-100 p-5 shadow-[0_6px_20px_-10px_rgba(14,165,233,0.4)] ring-1 ring-sky-200">
       <div className="flex items-start gap-3">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
-          💪
+          🔁
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-black uppercase tracking-widest text-sky-900">
-            Träningsläge
+            Återspel
           </p>
           <p className="mt-0.5 text-sm font-bold leading-snug text-dark">
-            Du har redan spelat detta officiellt — nästa runda räknas inte mot
-            din placering.
+            Du har redan spelat detta officiellt — nästa runda är ny mix av
+            frågor och påverkar inte din placering.
           </p>
         </div>
       </div>
@@ -184,7 +186,10 @@ function TrainingBanner({ play }: TrainingBannerProps) {
             🏆 Ditt officiella resultat
           </p>
           <p className="text-[10px] font-semibold text-sky-900/80">
-            {Math.round(accuracy * 100)}% rätt
+            {play.totalQuestions > 0
+              ? Math.round((play.correctCount / play.totalQuestions) * 100)
+              : 0}
+            % rätt
           </p>
         </div>
         <div className="mt-1.5 flex items-baseline gap-2">

@@ -1,22 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useState } from "react";
+import { use, useMemo, useState } from "react";
 
 import { quizzes } from "@/data/quizzes";
-import {
-  computePercentile,
-  maxPossibleScore,
-} from "@/features/quiz/game-utils";
 import {
   pickNextQuiz,
   type NextSuggestion,
 } from "@/features/quiz/next-quiz";
+import { PlayQuestions } from "@/features/quiz/play-questions";
 import { QuizIntro } from "@/features/quiz/quiz-intro";
-import {
-  PlayQuestions,
-  type Answer,
-} from "@/features/quiz/play-questions";
 import { QuizResult } from "@/features/quiz/quiz-result";
 import {
   createPlay,
@@ -24,17 +17,28 @@ import {
   savePlay,
   usePlays,
 } from "@/features/quiz/use-plays";
-import type { Play } from "@/types/play";
+import { drawSessionQuestions } from "@/lib/draw-questions";
+import { calculateSessionAggregate } from "@/lib/scoring";
+import type { SessionAnswer } from "@/types/play";
+import type { Question } from "@/types/quiz";
 
 type Phase =
-  | { kind: "intro" }
-  | { kind: "playing"; isFirstAttempt: boolean; officialPlay: Play | null }
+  | { kind: "intro"; runId: number }
+  | {
+      kind: "playing";
+      runId: number;
+      isFirstAttempt: boolean;
+      questions: Question[];
+    }
   | {
       kind: "result";
-      answers: Answer[];
+      runId: number;
+      answers: SessionAnswer[];
+      questions: Question[];
       percentile: number;
+      totalScore: number;
+      correctCount: number;
       isFirstAttempt: boolean;
-      officialPlay: Play | null;
       next: NextSuggestion | null;
     };
 
@@ -47,7 +51,12 @@ export default function QuizPage({ params }: QuizPageProps) {
   const router = useRouter();
   const quiz = quizzes.find((q) => q.id === id);
   const plays = usePlays();
-  const [phase, setPhase] = useState<Phase>({ kind: "intro" });
+  const [phase, setPhase] = useState<Phase>({ kind: "intro", runId: 0 });
+
+  const officialPlay = useMemo(
+    () => (quiz ? getOfficialPlay(quiz.id, plays) : null),
+    [quiz, plays],
+  );
 
   if (!quiz) {
     return (
@@ -67,35 +76,33 @@ export default function QuizPage({ params }: QuizPageProps) {
   if (phase.kind === "playing") {
     return (
       <PlayQuestions
-        questions={quiz.questions}
-        theme="quiz"
-        abortTitle="Avbryta quiz?"
-        abortConfirmLabel="Avbryt quiz"
+        questions={phase.questions}
         onComplete={(answers) => {
-          const totalScore = answers.reduce((sum, a) => sum + a.score, 0);
-          const correctCount = answers.filter((a) => a.correct).length;
-          const accuracy =
-            answers.length > 0 ? correctCount / answers.length : 0;
-          const maxScore = maxPossibleScore(quiz.questions);
-          const percentile = phase.isFirstAttempt
-            ? computePercentile(totalScore, maxScore)
-            : 0;
+          const aggregate = calculateSessionAggregate(answers);
           const newPlay = createPlay({
             quizId: quiz.id,
-            score: totalScore,
-            correctCount,
-            totalQuestions: quiz.questions.length,
-            percentile,
+            score: aggregate.totalScore,
+            correctCount: aggregate.correctCount,
+            totalQuestions: phase.questions.length,
+            percentile: aggregate.overallPercentile,
             isFirstAttempt: phase.isFirstAttempt,
+            sessionAnswers: answers,
           });
           savePlay(newPlay);
+          const accuracy =
+            phase.questions.length > 0
+              ? aggregate.correctCount / phase.questions.length
+              : 0;
           const next = pickNextQuiz(quiz, accuracy, quizzes);
           setPhase({
             kind: "result",
+            runId: phase.runId,
             answers,
-            percentile,
+            questions: phase.questions,
+            percentile: aggregate.overallPercentile,
+            totalScore: aggregate.totalScore,
+            correctCount: aggregate.correctCount,
             isFirstAttempt: phase.isFirstAttempt,
-            officialPlay: phase.officialPlay,
             next,
           });
         }}
@@ -109,28 +116,39 @@ export default function QuizPage({ params }: QuizPageProps) {
       <QuizResult
         quiz={quiz}
         answers={phase.answers}
+        questions={phase.questions}
         percentile={phase.percentile}
+        totalScore={phase.totalScore}
+        correctCount={phase.correctCount}
         isFirstAttempt={phase.isFirstAttempt}
-        officialPlay={phase.officialPlay}
         next={phase.next}
+        onPlayAgain={() => {
+          const drawn = drawSessionQuestions(quiz);
+          setPhase({
+            kind: "playing",
+            runId: phase.runId + 1,
+            isFirstAttempt: false,
+            questions: drawn,
+          });
+        }}
         onHome={() => router.push("/")}
       />
     );
   }
 
-  const officialPlay = getOfficialPlay(quiz.id, plays);
-
   return (
     <QuizIntro
       quiz={quiz}
-      officialPlay={officialPlay}
-      onStart={() =>
+      previousPlay={officialPlay}
+      onStart={() => {
+        const drawn = drawSessionQuestions(quiz);
         setPhase({
           kind: "playing",
+          runId: phase.runId,
           isFirstAttempt: officialPlay === null,
-          officialPlay,
-        })
-      }
+          questions: drawn,
+        });
+      }}
     />
   );
 }

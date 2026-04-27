@@ -43,7 +43,7 @@ export default function HomePage() {
   const plays = usePlays();
 
   const playableQuizzes = useMemo(
-    () => quizzes.filter((q) => q.questions.length > 0),
+    () => quizzes.filter((q) => q.questionPool.length > 0),
     [],
   );
 
@@ -474,8 +474,8 @@ function CompactQuizRow({ quiz, isPlayed }: CompactQuizRowProps) {
         <h3 className="mt-0.5 truncate text-sm font-extrabold leading-tight text-dark">
           {quiz.title}
         </h3>
-        <p className="text-[10px] font-semibold text-muted-foreground">
-          {quiz.questionCount} frågor
+        <p className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+          🔁 {quiz.questionsPerSession} av {quiz.questionPool.length} random
         </p>
       </div>
       {isPlayed && (

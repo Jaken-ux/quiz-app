@@ -5,17 +5,16 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useUser } from "@/features/auth/use-user";
 import { readPlays } from "@/features/quiz/use-plays";
 import { BADGES } from "@/features/stats/badges";
-import {
-  XP_PER_LEVEL_CONST,
-  computeStats,
-} from "@/features/stats/compute-stats";
+import { computeStats } from "@/features/stats/compute-stats";
 import {
   INTERESTS,
-  INTEREST_ACCENT_BAR,
   INTEREST_ICON_BG,
   INTEREST_META,
+  interestToSlug,
 } from "@/lib/interests";
+import { PROGRESSION_META } from "@/lib/progression";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 function useHasMounted(): boolean {
   return useSyncExternalStore(
@@ -51,11 +50,6 @@ export default function StatsPage() {
   );
   const earnedCount = badgeStates.filter((b) => b.earned).length;
 
-  const xpProgress = Math.min(
-    100,
-    (stats.xpForLevel / XP_PER_LEVEL_CONST) * 100,
-  );
-
   return (
     <div className="flex flex-col pb-6">
       <header className="relative overflow-hidden rounded-b-[2.5rem] bg-gradient-to-br from-[#1D3557] via-[#7C3AED] to-[#EC4899] px-6 pt-[calc(env(safe-area-inset-top)+1.75rem)] pb-9">
@@ -75,40 +69,21 @@ export default function StatsPage() {
         <div className="relative flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-black uppercase tracking-widest text-white/80">
-              {tier === "minimal" ? "Välkommen" : "Din nivå"}
+              {tier === "minimal" ? "Välkommen" : "Din statistik"}
             </p>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-6xl font-black leading-none text-white drop-shadow-sm">
-                {stats.level}
-              </span>
-              <span className="text-lg font-extrabold text-white/90">LVL</span>
-            </div>
-            <p className="mt-1 text-sm font-bold text-white">
-              {stats.rankTitle}
-            </p>
+            <h1 className="mt-1 text-3xl font-extrabold text-white drop-shadow-sm">
+              Hej {user?.username ?? "spelare"}!
+            </h1>
+            {tier !== "minimal" && (
+              <p className="mt-1 text-sm font-bold text-white/95">
+                {stats.totalAnswers.toLocaleString("sv-SE")} frågor besvarade
+              </p>
+            )}
           </div>
           <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-white/25 text-4xl shadow-lg ring-4 ring-white/40 backdrop-blur">
             {user?.avatar ?? "🎮"}
           </div>
         </div>
-
-        {tier !== "minimal" && (
-          <div className="relative mt-5">
-            <div className="flex items-baseline justify-between text-[11px] font-black tabular-nums text-white/90">
-              <span>{stats.xpForLevel} XP</span>
-              <span>{XP_PER_LEVEL_CONST} XP</span>
-            </div>
-            <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-white/25">
-              <div
-                className="h-full rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.6)] transition-all duration-500"
-                style={{ width: `${xpProgress}%` }}
-              />
-            </div>
-            <p className="mt-2 text-xs font-semibold text-white/90">
-              {stats.xpToNextLevel} XP till Level {stats.level + 1}
-            </p>
-          </div>
-        )}
       </header>
 
       <div className="flex flex-col gap-5 px-6 pt-5">
@@ -137,19 +112,21 @@ export default function StatsPage() {
 
             <section className="grid grid-cols-2 gap-3">
               <StatTile
-                emoji="🏆"
-                label="Total poäng"
-                value={stats.totalScore.toLocaleString("sv-SE")}
-              />
-              <StatTile
-                emoji="⭐"
-                label="Bästa spel"
-                value={stats.bestScore.toLocaleString("sv-SE")}
+                emoji="📝"
+                label="Frågor"
+                value={stats.totalAnswers.toLocaleString("sv-SE")}
               />
               <StatTile
                 emoji="🎮"
-                label="Spelade"
+                label="Sessioner"
                 value={String(stats.totalPlays)}
+              />
+              <StatTile
+                emoji="📊"
+                label="Snittpercentil"
+                value={
+                  stats.totalPlays > 0 ? `${stats.averagePercentile}%` : "—"
+                }
               />
               <StatTile
                 emoji="🎯"
@@ -167,19 +144,31 @@ export default function StatsPage() {
         {tier === "full" && (
           <section className="rounded-3xl bg-white p-5 shadow-[0_8px_28px_-10px_rgba(29,53,87,0.18)] ring-1 ring-black/5">
             <div className="flex items-baseline justify-between">
-              <h3 className="text-lg font-extrabold text-dark">Intressen</h3>
+              <h3 className="text-lg font-extrabold text-dark">
+                Min utveckling
+              </h3>
               <p className="text-[11px] font-bold text-muted-foreground">
                 {stats.uniqueInterestCount}/{INTERESTS.length} utforskade
               </p>
             </div>
-            <div className="mt-4 flex flex-col gap-3.5">
+            <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+              Nivå per intresse — tryck för att utforska.
+            </p>
+            <div className="mt-4 flex flex-col gap-2.5">
               {INTERESTS.map((interest) => {
                 const m = stats.perInterest[interest];
                 const meta = INTEREST_META[interest];
-                const hasPlays = m.plays > 0;
-                const pct = m.accuracy * 100;
+                const levelMeta = PROGRESSION_META[m.level];
+                const played = m.questionsAnswered > 0;
                 return (
-                  <div key={interest} className="flex items-center gap-3">
+                  <Link
+                    key={interest}
+                    href={`/intresse/${interestToSlug(interest)}`}
+                    className={cn(
+                      "flex items-center gap-3 rounded-2xl bg-neutral-50 p-3 ring-1 ring-black/5 transition active:scale-[0.99]",
+                      !played && "opacity-70",
+                    )}
+                  >
                     <div
                       className={cn(
                         "flex size-11 shrink-0 items-center justify-center rounded-xl text-xl shadow-inner",
@@ -190,27 +179,26 @@ export default function StatsPage() {
                       {meta.emoji}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="truncate text-sm font-bold text-dark">
-                          {meta.name}
-                        </p>
-                        <p className="text-[11px] font-black tabular-nums text-muted-foreground">
-                          {hasPlays ? `${Math.round(pct)}%` : "oprövad"}
-                        </p>
-                      </div>
-                      <div className="mt-1 h-2 overflow-hidden rounded-full bg-black/5">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all duration-500",
-                            INTEREST_ACCENT_BAR[interest],
-                          )}
-                          style={{
-                            width: `${hasPlays ? Math.max(pct, 4) : 0}%`,
-                          }}
-                        />
-                      </div>
+                      <p className="truncate text-sm font-bold text-dark">
+                        {meta.name}
+                      </p>
+                      <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
+                        {played
+                          ? `${m.questionsAnswered} frågor · ${m.averagePercentile}%`
+                          : "Inte spelat ännu"}
+                      </p>
                     </div>
-                  </div>
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black"
+                      style={{
+                        backgroundColor: `${levelMeta.color}1F`,
+                        color: levelMeta.color,
+                      }}
+                    >
+                      <span aria-hidden>{levelMeta.emoji}</span>
+                      {levelMeta.name}
+                    </span>
+                  </Link>
                 );
               })}
             </div>
@@ -267,33 +255,6 @@ export default function StatsPage() {
             </div>
           </section>
         )}
-
-        {tier === "full" && (
-          <section>
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1D3557] via-[#2C5282] to-[#7C3AED] p-5 text-white shadow-[0_10px_28px_-10px_rgba(29,53,87,0.4)]">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-28 rounded-full bg-white/10 blur-xl"
-              />
-              <div className="relative flex items-center gap-4">
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl backdrop-blur">
-                  🌐
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-white/70">
-                    Din globala placering
-                  </p>
-                  <p className="mt-0.5 text-2xl font-black tabular-nums">
-                    #{stats.mockRank.toLocaleString("sv-SE")}
-                  </p>
-                  <p className="text-xs font-semibold text-white/90">
-                    av {stats.mockTotalPlayers.toLocaleString("sv-SE")} spelare
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
       </div>
     </div>
   );
@@ -314,7 +275,7 @@ function MinimalView({ totalPlays }: MinimalViewProps) {
       </h3>
       <p className="mt-1 text-sm font-medium text-muted-foreground">
         {totalPlays === 0
-          ? "Spela ett quiz så börjar vi räkna XP, streaks och utmärkelser."
+          ? "Spela ett quiz så börjar vi räkna percentil, streaks och utmärkelser."
           : `Du har spelat ${totalPlays} quiz. Spela ${
               3 - totalPlays
             } till så låser vi upp mer statistik.`}

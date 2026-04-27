@@ -45,26 +45,60 @@ Samarbete med Instagram-kontot **sverigesroligastevideor** (~452k följare) som 
 
 Jobba med mock-data först. Backend tillkommer när flödet känns rätt.
 
-## Hybrid-modell: Quiz vs Träna
+## Pool-modellen
 
-Appen har två lägen som existerar parallellt:
+Alla quiz är pool-baserade. Ett quiz har en `questionPool: Question[]`
+(idealt 25+ frågor) och ett `questionsPerSession`-tal (default 10).
+Vid varje sessionstart drar `drawSessionQuestions(quiz)` i
+`src/lib/draw-questions.ts` ett random-urval ur poolen via
+Fisher-Yates. Spelar man om får man en ny mix.
 
-**Quiz-läget**: Fasta utmaningar med samma frågor för alla spelare.
-Första försöket räknas officiellt och ger percentil-placering. Efterföljande
-försök är "träningsläge" — visar resultat men ändrar inte placering.
-Veckans quiz, månadens quiz och alla signatur-quiz tillhör detta läge.
+**Mätningen sker per fråga.** Varje `Question` bär `mockStats`
+(totalAnswered, correctRate, averageTimeSeconds) — påhittad crowd-data
+tills vi har en backend (`synthMockStats` i `src/data/quizzes.ts`
+genererar siffror deterministiskt från frågans id, så samma fråga
+får alltid samma "crowd"). `calculateQuestionScore` i
+`src/lib/scoring.ts` ger varje fråga en score (bas + tidsbonus
+× svårighetsmultiplikator från crowd correct-rate) och en percentil
+relativt crowd. `calculateSessionAggregate` rullar upp till session:
+totalScore, correctCount, snitt-percentil och en aggregerad
+`overallPercentile` (70% snitt + 30% rätt-andel) som sparas på `Play`.
 
-**Träna-läget**: Endless-sessions där 10 random frågor dras ur en pool
-baserat på intresse + svårighet. Inget officiellt resultat — istället
-en rating per intresse (1000 vid start, rör sig 100–3000) som följer
-användarens kunskap upp och ner. Två lägen: Klassisk (15s/fråga) och
-Snabb (7s/fråga, dubbla rating-effekten).
+`Play.sessionAnswers: SessionAnswer[]` lagrar per-fråga-bryt-ner
+(questionId, wasCorrect, timeUsedSeconds, scoreEarned,
+percentileForQuestion). Result-skärmen läser dessa och visar en
+collapsible "Visa per fråga"-sektion. Lagringen ligger på
+`quiz-app.plays`.
 
-Träna-frågorna lever i `src/data/question-pool.ts` (taggade med
-intresse + svårighet) — separat från `src/data/quizzes.ts` som driver
-de fasta quizen. Utöka poolen genom att lägga till fler `QuestionPoolItem`
-i den listan; `drawQuestions(interest, difficulty, count)` i
-`src/lib/training.ts` plockar slumpvis när en session startas.
+`Play.isFirstAttempt` finns kvar för att skilja första officiella
+försök från återspel — återspel sparas men markeras "🔁 Påverkar
+inte din officiella placering".
+
+## Progression och nivåer
+
+Vi har skrotat det gamla rating-systemet (1000–3000-skalan, decay,
+classic/fast-mode). Ersatt med ett 5-stegsystem per intresse i
+`src/lib/progression.ts`. `getProgressionLevel(questionsAnswered,
+averagePercentile)` returnerar nivå:
+
+- 🌱 Nybörjare (`#9CA3AF`) — under 10 frågor besvarade
+- 💙 Hängiven (`#3B82F6`) — 10+ frågor
+- 🌟 Skicklig (`#10B981`) — 25+ frågor & ≥60% snittpercentil
+- 🏅 Expert (`#A855F7`) — 50+ frågor & ≥75% snittpercentil
+- 👑 Mästare (`#F59E0B`) — 100+ frågor & ≥90% snittpercentil
+
+Volym-grindar gör att ingen kan blixt-lyfta till Mästare på 5 spel.
+Beräknas i `compute-stats.ts` (per intresse, multi-räknat när ett
+quiz har flera intressen) och visas på profil ("Min utveckling")
+och stats-sidan (full-tier).
+
+## Event-quiz (kommande, inte byggt)
+
+Idén är fasta event-quiz för månadens, veckans, partner-samarbeten
+etc. — där alla spelare får samma frågeordning utan random-draw.
+Dessa byggs ovanpå pool-modellen som en flagga eller en separat
+quiz-typ. Inte byggt ännu — när det byggs ska "Dagens utmaning"
+på stats-sidan vara hemmet för det.
 
 ## Intressen istället för kategorier
 
@@ -77,9 +111,9 @@ Tailwind-klasser) finns centralt i `src/lib/interests.ts`.
 har plats för ett.
 
 Visuellt språk:
-- Quiz-läge officiellt: röd primär, "ranking"-känsla (rosetter, percentil)
-- Quiz-läge träning (replay av spelat quiz): blå/grön accent, mjukare ton
-- Träna-läge: blå/grön gradient genomgående, "övning och tillväxt"
+- Första försök: röd primär, "officiellt"-känsla (rosetter, percentil-bar)
+- Återspel: sky/cyan accent på överline + banner ("🔁 Återspel"),
+  i övrigt samma layout
 
 ## Personalisering (smaktest + smart slump)
 
@@ -142,42 +176,23 @@ en bottom sheet med formatets beskrivning vid klick.
 
 Statistik-fliken har tre nivåer baserat på `totalPlays`:
 
-- **0–2 spel** (`minimal`): Bara header + kort välkomstkort. Inga
-  badges, inga staplar, ingen XP-bar — tomt skiljer sig inte från
-  intressant.
-- **3–9 spel** (`growing`): Header med XP-bar, streak-kort, fyra
-  stat-tiles, och badges. Per-intresse-listan ligger i bakgrunden tills
-  fler spel ger meningsfull data.
-- **10+ spel** (`full`): Full vy med per-intresse-progressionsbarer
-  (alla 12 intressen) och global-rank-kort.
+- **0–2 spel** (`minimal`): Bara header + välkomstkort. Inga
+  badges, inga staplar.
+- **3–9 spel** (`growing`): Header, streak-kort, fyra stat-tiles
+  (frågor, sessioner, snittpercentil, träffsäkerhet) och badges.
+- **10+ spel** (`full`): Allt ovan + "Min utveckling"-sektion
+  med nivåtaggar per intresse (alla 12).
 
-Tier-funktionen (`tierFor`) bor inline i `src/app/stats/page.tsx`.
+Inga rating-element kvar (XP-bar, ratings per kategori) — vi har
+gått över till percentil + progression. Tier-funktionen (`tierFor`)
+bor inline i `src/app/stats/page.tsx`.
 
-## Rating-systemet
+## Glömda data i localStorage
 
-Varje intresse har sin egen rating som börjar på 1000 och rör sig
-mellan 100 och 3000. Bara Träna-läget påverkar rating; Quiz-läget
-ger percentil men inte rating.
-
-**Per fråga (`calculateQuestionDelta` i `src/lib/rating.ts`):**
-- Lätt: rätt +6, fel −10
-- Medel: rätt +10, fel −10
-- Svår: rätt +15, fel −5
-- Tidsbonus: rätt på under halva tidsgränsen ger +3
-
-**Per session:** sum av alla frågedelta, gånger 2 om läget är Snabb.
-
-**Nivåtrappa (färger används konsekvent där rating visas):**
-- 🌱 Nybörjare (`#9CA3AF`) — < 800
-- 💙 Hängiven (`#3B82F6`) — 800–1199
-- 🌟 Skicklig (`#10B981`) — 1200–1599
-- 🏅 Expert (`#A855F7`) — 1600–1999
-- 👑 Mästare (`#F59E0B`) — 2000+
-
-Rating sparas i localStorage under `quiz-app.ratings` som en map
-keyad på intresse. `useRatings()` ger reaktiv åtkomst,
-`updateRating(interest, delta)` skriver. Ingen rating decay över
-tid — bara prestation flyttar siffran.
+Tidigare versioner skrev till `quiz-app.training-sessions` och
+`quiz-app.ratings`. De nycklarna läses inte längre — finns kvar
+i lokal lagring för befintliga användare men stör inget. Inget
+behov av migration eller städning.
 
 ## Referens
 Se docs/PROJECT.md för full projektplan.
@@ -193,7 +208,7 @@ flikar) är synligt. PWA-installation är INTE prioriterat nu — fokus är
 att allt innanför viewporten ska kännas som en app.
 
 ### Krav på app-känsla
-- Hela appen wrappas i en AppShell med bottom-nav (Hem, Stats, Profil)
+- Hela appen wrappas i en AppShell med bottom-nav (Hem, Stats, Profil — Träna är borttaget)
 - Safe areas respekteras (env(safe-area-inset-*))
 - 100dvh används, inte 100vh (undviker Safari-bråk)
 - Input font-size minst 16px (förhindrar iOS auto-zoom vid fokus)

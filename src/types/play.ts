@@ -1,12 +1,24 @@
+export type SessionAnswer = {
+  questionId: string;
+  wasCorrect: boolean;
+  timeUsedSeconds: number;
+  scoreEarned: number;
+  percentileForQuestion: number;
+};
+
 export type Play = {
   id: string;
   quizId: string;
   score: number;
   correctCount: number;
   totalQuestions: number;
-  // Percentile is meaningful only for the first official attempt.
-  // Training plays store 0 here.
+  /** Aggregated session percentile (0-100). */
   percentile: number;
   isFirstAttempt: boolean;
   playedAt: string;
+  /**
+   * Per-question breakdown. Optional so plays from before pool-mode
+   * keep deserializing. Newer plays always carry it.
+   */
+  sessionAnswers?: SessionAnswer[];
 };

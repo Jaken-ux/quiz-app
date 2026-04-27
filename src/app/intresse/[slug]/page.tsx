@@ -63,7 +63,7 @@ function InterestLanding({ interest }: InterestLandingProps) {
   );
 
   const playableInInterest = useMemo(
-    () => quizzesInInterest.filter((q) => q.questions.length > 0),
+    () => quizzesInInterest.filter((q) => q.questionPool.length > 0),
     [quizzesInInterest],
   );
 
@@ -395,8 +395,8 @@ function FullQuizRow({ quiz, isPlayed }: FullQuizRowProps) {
           >
             {DIFFICULTY_LABEL[quiz.difficulty]}
           </span>
-          <span className="font-semibold text-muted-foreground">
-            {quiz.questionCount} frågor
+          <span className="font-semibold text-muted-foreground tabular-nums">
+            🔁 {quiz.questionsPerSession} av {quiz.questionPool.length}
           </span>
         </div>
       </div>

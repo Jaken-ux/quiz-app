@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-import type { Play } from "@/types/play";
+import type { Play, SessionAnswer } from "@/types/play";
 
 const STORAGE_KEY = "quiz-app.plays";
 
@@ -30,8 +30,8 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// Older plays predate `id` and `isFirstAttempt`. Backfill defaults so legacy
-// localStorage data keeps working without a manual reset.
+// Older plays predate `id`, `isFirstAttempt`, and `sessionAnswers`.
+// Backfill defaults so legacy localStorage data keeps working.
 function normalizePlay(raw: unknown): Play | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Partial<Play> & Record<string, unknown>;
@@ -52,6 +52,9 @@ function normalizePlay(raw: unknown): Play | null {
       typeof value.playedAt === "string"
         ? value.playedAt
         : new Date().toISOString(),
+    sessionAnswers: Array.isArray(value.sessionAnswers)
+      ? (value.sessionAnswers as SessionAnswer[])
+      : undefined,
   };
 }
 
@@ -110,6 +113,7 @@ export type CreatePlayInput = {
   totalQuestions: number;
   percentile: number;
   isFirstAttempt: boolean;
+  sessionAnswers: SessionAnswer[];
 };
 
 export function createPlay(input: CreatePlayInput): Play {
@@ -122,6 +126,7 @@ export function createPlay(input: CreatePlayInput): Play {
     percentile: input.percentile,
     isFirstAttempt: input.isFirstAttempt,
     playedAt: new Date().toISOString(),
+    sessionAnswers: input.sessionAnswers,
   };
 }
 

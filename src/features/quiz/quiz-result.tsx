@@ -1,16 +1,15 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
-import { maxPossibleScore } from "@/features/quiz/game-utils";
 import { LikeButton } from "@/features/quiz/like-button";
 import {
   reasonLabel,
   type NextSuggestion,
 } from "@/features/quiz/next-quiz";
-import type { Answer } from "@/features/quiz/play-questions";
 import {
   DIFFICULTY_LABEL,
   DIFFICULTY_PILL,
@@ -21,16 +20,19 @@ import {
   primaryInterest,
 } from "@/lib/interests";
 import { cn } from "@/lib/utils";
-import type { Play } from "@/types/play";
-import type { Quiz } from "@/types/quiz";
+import type { SessionAnswer } from "@/types/play";
+import type { Question, Quiz } from "@/types/quiz";
 
 type QuizResultProps = {
   quiz: Quiz;
-  answers: Answer[];
+  answers: SessionAnswer[];
+  questions: Question[];
   percentile: number;
+  totalScore: number;
+  correctCount: number;
   isFirstAttempt: boolean;
-  officialPlay: Play | null;
   next: NextSuggestion | null;
+  onPlayAgain: () => void;
   onHome: () => void;
 };
 
@@ -116,91 +118,45 @@ function pickFromBands(
   return list[idx];
 }
 
-function getOfficialHeadline(correctRatio: number, score: number): string {
-  return pickFromBands(correctRatio, score, {
+export function QuizResult({
+  quiz,
+  answers,
+  questions,
+  percentile,
+  totalScore,
+  correctCount,
+  isFirstAttempt,
+  next,
+  onPlayAgain,
+  onHome,
+}: QuizResultProps) {
+  const totalQuestions = answers.length;
+  const correctRatio =
+    totalQuestions > 0 ? correctCount / totalQuestions : 0;
+  const hasMounted = useHasMounted();
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
+
+  const headline = pickFromBands(correctRatio, totalScore, {
     high: HEADLINES_HIGH,
     midHigh: HEADLINES_MID_HIGH,
     midLow: HEADLINES_MID_LOW,
     low: HEADLINES_LOW,
   });
-}
-
-function getOfficialSubline(correctRatio: number, score: number): string {
-  return pickFromBands(correctRatio, score, {
+  const subline = pickFromBands(correctRatio, totalScore, {
     high: SUBLINES_HIGH,
     midHigh: SUBLINES_MID_HIGH,
     midLow: SUBLINES_MID_LOW,
     low: SUBLINES_LOW,
   });
-}
-
-function getTrainingHeadline(correctRatio: number): string {
-  if (correctRatio >= 0.85) return "Toppenövning! 💪";
-  if (correctRatio >= 0.6) return "Bra träning!";
-  if (correctRatio >= 0.3) return "Fortsätt så.";
-  return "Fler försök = mer kunskap.";
-}
-
-function getTrainingSubline(
-  newCorrect: number,
-  officialCorrect: number | null,
-): string {
-  if (officialCorrect === null) {
-    return "Träningsförsök sparat.";
-  }
-  if (newCorrect > officialCorrect) {
-    return "Bättre än ditt officiella!";
-  }
-  if (newCorrect < officialCorrect) {
-    return "Strax under ditt officiella.";
-  }
-  return "Lika bra som ditt officiella.";
-}
-
-export function QuizResult({
-  quiz,
-  answers,
-  percentile,
-  isFirstAttempt,
-  officialPlay,
-  next,
-  onHome,
-}: QuizResultProps) {
-  const totalScore = answers.reduce((sum, a) => sum + a.score, 0);
-  const correctCount = answers.filter((a) => a.correct).length;
-  const totalQuestions = answers.length;
-  const correctRatio =
-    totalQuestions > 0 ? correctCount / totalQuestions : 0;
-  const maxScore = useMemo(
-    () => maxPossibleScore(quiz.questions),
-    [quiz.questions],
-  );
-  const hasMounted = useHasMounted();
-
-  const headline = isFirstAttempt
-    ? getOfficialHeadline(correctRatio, totalScore)
-    : getTrainingHeadline(correctRatio);
-  const subline = isFirstAttempt
-    ? getOfficialSubline(correctRatio, totalScore)
-    : getTrainingSubline(correctCount, officialPlay?.correctCount ?? null);
-
-  const bgClass = isFirstAttempt
-    ? "bg-gradient-to-b from-[#FEF3C7] via-[#FFE4E6] to-[#FFEDD5]"
-    : "bg-gradient-to-b from-[#E0F2FE] via-[#D1FAE5] to-[#FEFCE8]";
-
-  const scoreColorClass = isFirstAttempt
-    ? "text-primary"
-    : "text-emerald-600";
 
   const overlineLabel = isFirstAttempt
     ? "🏆 Officiellt resultat"
-    : "💪 Träningsresultat";
+    : "🔁 Återspel";
 
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-6",
-        bgClass,
+        "relative flex h-full flex-col overflow-hidden bg-gradient-to-b from-[#FEF3C7] via-[#FFE4E6] to-[#FFEDD5] px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-6",
       )}
     >
       {hasMounted && (
@@ -285,80 +241,69 @@ export function QuizResult({
           <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
             Poäng
           </p>
-          <p
-            className={cn(
-              "mt-1 text-6xl font-black tabular-nums",
-              scoreColorClass,
-            )}
-          >
-            {totalScore}
+          <p className="mt-1 text-6xl font-black tabular-nums text-primary">
+            {totalScore.toLocaleString("sv-SE")}
           </p>
           <p className="mt-1 text-xs font-semibold tabular-nums text-muted-foreground">
-            av {maxScore} möjliga
+            {correctCount} av {totalQuestions} rätt
           </p>
         </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-5 text-base font-bold text-dark"
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="mt-5 w-full rounded-2xl bg-white p-5 text-left shadow-sm ring-1 ring-black/5"
         >
-          Du svarade{" "}
-          <span className={scoreColorClass}>
-            {correctCount} av {totalQuestions}
-          </span>{" "}
-          rätt
-        </motion.p>
+          <p className="text-sm font-extrabold text-dark">
+            Du slog{" "}
+            <span className="text-base text-primary">{percentile}%</span> av
+            alla som spelat!
+          </p>
+          <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-black/10">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${percentile}%` }}
+              transition={{ duration: 1, delay: 0.75, ease: "easeOut" }}
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-400"
+            />
+            <motion.div
+              initial={{ left: "0%", opacity: 0 }}
+              animate={{ left: `${percentile}%`, opacity: 1 }}
+              transition={{ duration: 1, delay: 0.75, ease: "easeOut" }}
+              className="absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-md ring-2 ring-primary"
+            />
+          </div>
+          <div className="mt-1.5 flex justify-between text-[10px] font-bold text-muted-foreground">
+            <span>0%</span>
+            <span>100%</span>
+          </div>
+          <p className="mt-3 text-[11px] font-bold text-amber-700">
+            {isFirstAttempt
+              ? "🏆 Räknas mot din placering"
+              : "🔁 Påverkar inte din officiella placering"}
+          </p>
+        </motion.div>
 
-        {isFirstAttempt ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mt-5 w-full rounded-2xl bg-white p-5 text-left shadow-sm ring-1 ring-black/5"
-          >
-            <p className="text-sm font-extrabold text-dark">
-              Du slog{" "}
-              <span className="text-primary text-base">{percentile}%</span> av
-              alla som spelat!
-            </p>
-            <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-black/10">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${percentile}%` }}
-                transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
-                className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-400"
-              />
-              <motion.div
-                initial={{ left: "0%", opacity: 0 }}
-                animate={{ left: `${percentile}%`, opacity: 1 }}
-                transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
-                className="absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-md ring-2 ring-primary"
-              />
-            </div>
-            <div className="mt-1.5 flex justify-between text-[10px] font-bold text-muted-foreground">
-              <span>0%</span>
-              <span>100%</span>
-            </div>
-            <p className="mt-3 text-[11px] font-bold text-amber-700">
-              🏆 Räknas mot din placering
-            </p>
-          </motion.div>
-        ) : (
-          <TrainingComparison
-            officialPlay={officialPlay}
-            newCorrect={correctCount}
-            newScore={totalScore}
-            totalQuestions={totalQuestions}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+          className="mt-3 w-full"
+        >
+          <BreakdownSection
+            answers={answers}
+            questions={questions}
+            open={breakdownOpen}
+            onToggle={() => setBreakdownOpen((v) => !v)}
           />
-        )}
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.75 }}
-          className="mt-5 flex flex-col items-center gap-2"
+          className="mt-4 flex flex-col items-center gap-2"
         >
           <p className="text-xs font-semibold text-muted-foreground">
             Gillade du quizet?
@@ -372,6 +317,13 @@ export function QuizResult({
       </div>
 
       <div className="relative mt-5 flex flex-col gap-2.5">
+        <button
+          type="button"
+          onClick={onPlayAgain}
+          className="h-12 w-full rounded-2xl bg-primary text-sm font-extrabold text-primary-foreground shadow-[0_10px_24px_-8px_rgba(230,57,70,0.55)] transition-transform active:scale-[0.98]"
+        >
+          🔁 Spela igen — ny frågemix
+        </button>
         {next && <NextQuizCard suggestion={next} />}
         <button
           type="button"
@@ -385,91 +337,119 @@ export function QuizResult({
   );
 }
 
-type TrainingComparisonProps = {
-  officialPlay: Play | null;
-  newCorrect: number;
-  newScore: number;
-  totalQuestions: number;
+type BreakdownSectionProps = {
+  answers: SessionAnswer[];
+  questions: Question[];
+  open: boolean;
+  onToggle: () => void;
 };
 
-function TrainingComparison({
-  officialPlay,
-  newCorrect,
-  newScore,
-  totalQuestions,
-}: TrainingComparisonProps) {
-  if (!officialPlay) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="mt-5 w-full rounded-2xl bg-white p-5 text-left shadow-sm ring-1 ring-black/5"
-      >
-        <p className="text-sm font-bold text-dark">
-          Träningsförsök sparat. Påverkar inte din placering.
-        </p>
-      </motion.div>
-    );
-  }
-
-  const diff = newCorrect - officialPlay.correctCount;
-  let comparisonLine: string;
-  let comparisonEmoji: string;
-  let comparisonClass: string;
-  if (diff > 0) {
-    comparisonLine = `${diff} ${diff === 1 ? "fler rätt" : "fler rätt"} än officiellt`;
-    comparisonEmoji = "🎯";
-    comparisonClass = "text-emerald-700";
-  } else if (diff < 0) {
-    const abs = Math.abs(diff);
-    comparisonLine = `${abs} ${abs === 1 ? "färre rätt" : "färre rätt"} än officiellt`;
-    comparisonEmoji = "💪";
-    comparisonClass = "text-sky-700";
-  } else {
-    comparisonLine = "Samma som officiellt";
-    comparisonEmoji = "🎯";
-    comparisonClass = "text-emerald-700";
-  }
+function BreakdownSection({
+  answers,
+  questions,
+  open,
+  onToggle,
+}: BreakdownSectionProps) {
+  const questionMap = useMemo(() => {
+    const map = new Map<string, Question>();
+    for (const q of questions) map.set(q.id, q);
+    return map;
+  }, [questions]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.6 }}
-      className="mt-5 w-full rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5"
-    >
-      <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-        Jämfört med officiellt försök
-      </p>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-emerald-50 p-3 ring-1 ring-emerald-200/60">
-          <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">
-            Detta försök
+    <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-5 py-3.5 text-left transition active:scale-[0.99]"
+      >
+        <span aria-hidden className="text-base">
+          📋
+        </span>
+        <span className="flex-1 text-sm font-extrabold text-dark">
+          {open ? "Dölj per fråga" : "Visa per fråga"}
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-4 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="breakdown"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-2 border-t border-black/5 px-5 pt-3 pb-4">
+              {answers.map((answer, idx) => {
+                const question = questionMap.get(answer.questionId);
+                return (
+                  <BreakdownRow
+                    key={answer.questionId}
+                    index={idx}
+                    answer={answer}
+                    question={question}
+                  />
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+type BreakdownRowProps = {
+  index: number;
+  answer: SessionAnswer;
+  question?: Question;
+};
+
+function BreakdownRow({ index, answer, question }: BreakdownRowProps) {
+  const correct = answer.wasCorrect;
+  const text = question?.text ?? "Fråga saknas";
+  const percentileLine = correct
+    ? `Snabbare än ${answer.percentileForQuestion}% av rätta svar`
+    : `Bättre än ${answer.percentileForQuestion}% av spelarna`;
+
+  return (
+    <div className="rounded-xl bg-neutral-50 p-3 ring-1 ring-black/5">
+      <div className="flex items-start gap-2.5">
+        <span
+          aria-hidden
+          className={cn(
+            "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black",
+            correct
+              ? "bg-emerald-500 text-white"
+              : "bg-rose-500 text-white",
+          )}
+        >
+          {correct ? "✓" : "✕"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+            Fråga {index + 1}
           </p>
-          <p className="mt-1 text-2xl font-black tabular-nums text-dark">
-            {newScore.toLocaleString("sv-SE")}
+          <p className="mt-0.5 line-clamp-2 text-xs font-bold leading-snug text-dark">
+            {text}
           </p>
-          <p className="mt-0.5 text-[11px] font-bold text-muted-foreground">
-            {newCorrect} av {totalQuestions} rätt
-          </p>
-        </div>
-        <div className="rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200/60">
-          <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">
-            🏆 Officiellt
-          </p>
-          <p className="mt-1 text-2xl font-black tabular-nums text-dark">
-            {officialPlay.score.toLocaleString("sv-SE")}
-          </p>
-          <p className="mt-0.5 text-[11px] font-bold text-muted-foreground">
-            {officialPlay.correctCount} av {officialPlay.totalQuestions} rätt
-          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
+            <span>⏱ {answer.timeUsedSeconds.toFixed(1)}s</span>
+            <span>· {answer.scoreEarned} p</span>
+            <span>· {percentileLine}</span>
+          </div>
         </div>
       </div>
-      <p className={cn("mt-3 text-sm font-extrabold", comparisonClass)}>
-        <span aria-hidden>{comparisonEmoji}</span> {comparisonLine}
-      </p>
-    </motion.div>
+    </div>
   );
 }
 

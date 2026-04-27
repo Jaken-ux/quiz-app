@@ -1,13 +1,18 @@
 import { quizzes } from "@/data/quizzes";
 import { INTERESTS } from "@/lib/interests";
+import {
+  getProgressionLevel,
+  type ProgressionLevel,
+} from "@/lib/progression";
 import type { Play } from "@/types/play";
 import type { Interest } from "@/types/quiz";
 
 export type InterestMastery = {
-  plays: number;
+  questionsAnswered: number;
   correctAnswers: number;
-  totalAnswers: number;
-  accuracy: number;
+  averagePercentile: number;
+  plays: number;
+  level: ProgressionLevel;
 };
 
 export type Stats = {
@@ -17,7 +22,7 @@ export type Stats = {
   correctAnswers: number;
   totalAnswers: number;
   accuracy: number;
-  avgPercentile: number;
+  averagePercentile: number;
   level: number;
   xpForLevel: number;
   xpToNextLevel: number;
@@ -77,16 +82,22 @@ function computeStreak(plays: Play[]): number {
   return streak;
 }
 
-function emptyMastery(): InterestMastery {
-  return { plays: 0, correctAnswers: 0, totalAnswers: 0, accuracy: 0 };
-}
+type InterestAcc = {
+  questionsAnswered: number;
+  correctAnswers: number;
+  percentileSum: number;
+  percentileSamples: number;
+  plays: number;
+};
 
-function emptyPerInterest(): Record<Interest, InterestMastery> {
-  const map = {} as Record<Interest, InterestMastery>;
-  for (const interest of INTERESTS) {
-    map[interest] = emptyMastery();
-  }
-  return map;
+function emptyAcc(): InterestAcc {
+  return {
+    questionsAnswered: 0,
+    correctAnswers: 0,
+    percentileSum: 0,
+    percentileSamples: 0,
+    plays: 0,
+  };
 }
 
 export function computeStats(plays: Play[]): Stats {
@@ -97,13 +108,9 @@ export function computeStats(plays: Play[]): Stats {
   const correctAnswers = plays.reduce((sum, p) => sum + p.correctCount, 0);
   const totalAnswers = plays.reduce((sum, p) => sum + p.totalQuestions, 0);
   const accuracy = totalAnswers > 0 ? correctAnswers / totalAnswers : 0;
-  // Only official first-attempt plays carry a meaningful percentile; training
-  // plays store 0 and would otherwise drag the average down.
-  const officialPlays = plays.filter((p) => p.isFirstAttempt);
-  const avgPercentile =
-    officialPlays.length > 0
-      ? officialPlays.reduce((sum, p) => sum + p.percentile, 0) /
-        officialPlays.length
+  const averagePercentile =
+    plays.length > 0
+      ? plays.reduce((sum, p) => sum + p.percentile, 0) / plays.length
       : 0;
 
   const level = xpToLevel(totalScore);
@@ -112,25 +119,40 @@ export function computeStats(plays: Play[]): Stats {
   const xpToNextLevel = XP_PER_LEVEL - xpForLevel;
   const rankTitle = rankForLevel(level);
 
-  const perInterest = emptyPerInterest();
+  const accs = {} as Record<Interest, InterestAcc>;
+  for (const interest of INTERESTS) accs[interest] = emptyAcc();
 
   for (const play of plays) {
     const interests = getQuizInterests(play.quizId);
     if (interests.length === 0) continue;
     for (const interest of interests) {
-      const mastery = perInterest[interest];
-      mastery.plays += 1;
-      mastery.correctAnswers += play.correctCount;
-      mastery.totalAnswers += play.totalQuestions;
-      mastery.accuracy =
-        mastery.totalAnswers > 0
-          ? mastery.correctAnswers / mastery.totalAnswers
-          : 0;
+      const acc = accs[interest];
+      acc.plays += 1;
+      acc.questionsAnswered += play.totalQuestions;
+      acc.correctAnswers += play.correctCount;
+      acc.percentileSum += play.percentile;
+      acc.percentileSamples += 1;
     }
   }
 
+  const perInterest = {} as Record<Interest, InterestMastery>;
+  for (const interest of INTERESTS) {
+    const acc = accs[interest];
+    const avg =
+      acc.percentileSamples > 0
+        ? acc.percentileSum / acc.percentileSamples
+        : 0;
+    perInterest[interest] = {
+      questionsAnswered: acc.questionsAnswered,
+      correctAnswers: acc.correctAnswers,
+      averagePercentile: Math.round(avg),
+      plays: acc.plays,
+      level: getProgressionLevel(acc.questionsAnswered, avg),
+    };
+  }
+
   const uniqueInterestCount = Object.values(perInterest).filter(
-    (m) => m.plays > 0,
+    (m) => m.questionsAnswered > 0,
   ).length;
 
   const streakDays = computeStreak(plays);
@@ -150,7 +172,7 @@ export function computeStats(plays: Play[]): Stats {
     correctAnswers,
     totalAnswers,
     accuracy,
-    avgPercentile,
+    averagePercentile: Math.round(averagePercentile),
     level,
     xpForLevel,
     xpToNextLevel,

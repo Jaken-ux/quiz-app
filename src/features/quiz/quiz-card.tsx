@@ -98,6 +98,13 @@ export function QuizCard({ quiz, isPlayed = false }: QuizCardProps) {
           >
             {DIFFICULTY_LABEL[quiz.difficulty]}
           </span>
+          <span
+            className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 font-bold text-muted-foreground tabular-nums ring-1 ring-black/5"
+            title="Pool-baserat quiz"
+          >
+            <span aria-hidden>🔁</span>
+            {quiz.questionsPerSession} av {quiz.questionPool.length}
+          </span>
           <span className="inline-flex items-center gap-1 font-semibold text-muted-foreground">
             <span aria-hidden>👥</span>
             {formatPlayCount(quiz.playCount)}
