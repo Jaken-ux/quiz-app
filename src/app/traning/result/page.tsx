@@ -13,12 +13,13 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  CATEGORY_EMOJI,
-  CATEGORY_ICON_BG,
-  CATEGORY_LABEL,
   DIFFICULTY_LABEL,
   DIFFICULTY_PILL,
-} from "@/features/quiz/category-meta";
+} from "@/lib/difficulty";
+import {
+  INTEREST_ICON_BG,
+  INTEREST_META,
+} from "@/lib/interests";
 import {
   compareLevels,
   getLevelProgress,
@@ -28,7 +29,7 @@ import {
 } from "@/lib/rating";
 import { drawQuestions, timeLimitForMode } from "@/lib/training";
 import { cn } from "@/lib/utils";
-import type { Category, Difficulty, Question } from "@/types/quiz";
+import type { Difficulty, Interest, Question } from "@/types/quiz";
 import type { TrainingMode } from "@/types/training";
 
 const SESSION_KEY = "quiz-app.current-training";
@@ -111,9 +112,9 @@ function TrainingResultContent() {
     const total = Number(params.get("total") ?? 0);
     if (!Number.isFinite(total) || total <= 0) return null;
     const mode = params.get("mode");
-    const category = params.get("category");
+    const interest = params.get("interest");
     const difficulty = params.get("difficulty");
-    if (!mode || !category || !difficulty) return null;
+    if (!mode || !interest || !difficulty) return null;
     return {
       score: Number(params.get("score") ?? 0),
       correct: Number(params.get("correct") ?? 0),
@@ -121,7 +122,7 @@ function TrainingResultContent() {
       avgTime: Number(params.get("avgTime") ?? 0),
       totalTime: Number(params.get("totalTime") ?? 0),
       mode: mode as TrainingMode,
-      category: category as Category,
+      interest: interest as Interest,
       difficulty: difficulty as Difficulty,
       ratingBefore: Number(params.get("ratingBefore") ?? 1000),
       ratingAfter: Number(params.get("ratingAfter") ?? 1000),
@@ -152,12 +153,13 @@ function TrainingResultContent() {
     avgTime,
     totalTime,
     mode,
-    category,
+    interest,
     difficulty,
     ratingBefore,
     ratingAfter,
     ratingDelta,
   } = data;
+  const interestMeta = INTEREST_META[interest];
   const correctRatio = total > 0 ? correct / total : 0;
   const headline = getHeadline(correctRatio, score);
 
@@ -173,7 +175,7 @@ function TrainingResultContent() {
   const isMaster = levelAfter === "master";
 
   const handleStartNew = () => {
-    const items = drawQuestions(category, difficulty, QUESTIONS_PER_SESSION);
+    const items = drawQuestions(interest, difficulty, QUESTIONS_PER_SESSION);
     if (items.length === 0) {
       router.push("/traning");
       return;
@@ -187,7 +189,7 @@ function TrainingResultContent() {
       timeLimitSeconds,
     }));
     const config = {
-      category,
+      interest,
       difficulty,
       mode,
       questions,
@@ -277,15 +279,15 @@ function TrainingResultContent() {
           <div
             className={cn(
               "flex size-10 items-center justify-center rounded-xl text-xl shadow-inner",
-              CATEGORY_ICON_BG[category],
+              INTEREST_ICON_BG[interest],
             )}
             aria-hidden
           >
-            {CATEGORY_EMOJI[category]}
+            {interestMeta.emoji}
           </div>
           <div className="text-left">
             <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-              {CATEGORY_LABEL[category]}
+              {interestMeta.name}
             </p>
             <p
               className={cn(
@@ -343,7 +345,7 @@ function TrainingResultContent() {
         )}
 
         <RatingChangeCard
-          category={category}
+          interest={interest}
           ratingBefore={ratingBefore}
           ratingAfter={ratingAfter}
           ratingDelta={ratingDelta}
@@ -441,7 +443,7 @@ function LevelUpBanner({
 }
 
 type RatingChangeCardProps = {
-  category: Category;
+  interest: Interest;
   ratingBefore: number;
   ratingAfter: number;
   ratingDelta: number;
@@ -454,7 +456,7 @@ type RatingChangeCardProps = {
 };
 
 function RatingChangeCard({
-  category,
+  interest,
   ratingBefore,
   ratingAfter,
   ratingDelta,
@@ -483,7 +485,7 @@ function RatingChangeCard({
       className="mt-5 w-full rounded-2xl bg-white p-5 text-left shadow-sm ring-1 ring-black/5"
     >
       <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-        Rating · {CATEGORY_LABEL[category]}
+        Rating · {INTEREST_META[interest].name}
       </p>
 
       <div className="mt-2 flex items-baseline gap-3">

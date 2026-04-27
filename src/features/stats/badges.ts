@@ -52,8 +52,8 @@ export const BADGES: BadgeDef[] = [
     id: "explorer",
     emoji: "🌍",
     label: "Upptäckaren",
-    description: "Spela 4 kategorier",
-    isEarned: (_plays, stats) => stats.uniqueCategoryCount >= 4,
+    description: "Spela quiz från 4 intressen",
+    isEarned: (_plays, stats) => stats.uniqueInterestCount >= 4,
   },
   {
     id: "stonecold",

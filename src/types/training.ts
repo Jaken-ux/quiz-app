@@ -1,8 +1,10 @@
-import type { Category, Difficulty } from "@/types/quiz";
+import type { Difficulty, Interest } from "@/types/quiz";
 
 export type QuestionPoolItem = {
   id: string;
-  category: Category;
+  // Pool questions are tagged with one primary interest (single-tag) for
+  // training purposes, even though full Quizzes can carry multiple.
+  interest: Interest;
   difficulty: Difficulty;
   text: string;
   options: string[];
@@ -18,8 +20,8 @@ export type RatingLevel =
   | "expert"
   | "master";
 
-export type CategoryRating = {
-  category: Category;
+export type InterestRating = {
+  interest: Interest;
   rating: number;
   gamesPlayed: number;
   lastUpdated: string;
@@ -27,7 +29,7 @@ export type CategoryRating = {
 
 export type TrainingSession = {
   id: string;
-  category: Category;
+  interest: Interest;
   difficulty: Difficulty;
   mode: TrainingMode;
   score: number;

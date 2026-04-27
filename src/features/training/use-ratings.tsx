@@ -2,14 +2,14 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-import { CATEGORIES } from "@/features/quiz/category-meta";
 import { applyRating, RATING_INITIAL_VALUE } from "@/lib/rating";
-import type { Category } from "@/types/quiz";
-import type { CategoryRating } from "@/types/training";
+import { INTERESTS } from "@/lib/interests";
+import type { Interest } from "@/types/quiz";
+import type { InterestRating } from "@/types/training";
 
 const STORAGE_KEY = "quiz-app.ratings";
 
-export type RatingsMap = Record<Category, CategoryRating>;
+export type RatingsMap = Record<Interest, InterestRating>;
 
 const listeners = new Set<() => void>();
 
@@ -18,9 +18,9 @@ let cachedRatings: RatingsMap | null = null;
 
 function freshRatings(): RatingsMap {
   const map = {} as RatingsMap;
-  for (const category of CATEGORIES) {
-    map[category] = {
-      category,
+  for (const interest of INTERESTS) {
+    map[interest] = {
+      interest,
       rating: RATING_INITIAL_VALUE,
       gamesPlayed: 0,
       lastUpdated: "",
@@ -52,17 +52,19 @@ function getSnapshot(): RatingsMap {
     return cachedRatings;
   }
   try {
-    const parsed = JSON.parse(raw) as Partial<RatingsMap>;
+    const parsed = JSON.parse(raw) as Partial<
+      Record<Interest, Partial<InterestRating>>
+    >;
     const merged = freshRatings();
-    for (const category of CATEGORIES) {
-      const stored = parsed[category];
+    for (const interest of INTERESTS) {
+      const stored = parsed[interest];
       if (
         stored &&
         typeof stored.rating === "number" &&
         typeof stored.gamesPlayed === "number"
       ) {
-        merged[category] = {
-          category,
+        merged[interest] = {
+          interest,
           rating: stored.rating,
           gamesPlayed: stored.gamesPlayed,
           lastUpdated:
@@ -112,21 +114,21 @@ export function readRatings(): RatingsMap {
   return getSnapshot();
 }
 
-export function getRating(category: Category): CategoryRating {
-  return getSnapshot()[category];
+export function getRating(interest: Interest): InterestRating {
+  return getSnapshot()[interest];
 }
 
-export function updateRating(category: Category, delta: number): {
-  before: number;
-  after: number;
-} {
+export function updateRating(
+  interest: Interest,
+  delta: number,
+): { before: number; after: number } {
   const current = getSnapshot();
-  const previous = current[category];
+  const previous = current[interest];
   const after = applyRating(previous.rating, delta);
   const next: RatingsMap = {
     ...current,
-    [category]: {
-      category,
+    [interest]: {
+      interest,
       rating: after,
       gamesPlayed: previous.gamesPlayed + 1,
       lastUpdated: new Date().toISOString(),
@@ -138,9 +140,9 @@ export function updateRating(category: Category, delta: number): {
 
 export type UseRatingsValue = {
   ratings: RatingsMap | null;
-  getRating: (category: Category) => CategoryRating | null;
+  getRating: (interest: Interest) => InterestRating | null;
   updateRating: (
-    category: Category,
+    interest: Interest,
     delta: number,
   ) => { before: number; after: number };
   isLoading: boolean;
@@ -153,12 +155,12 @@ export function useRatings(): UseRatingsValue {
     getServerSnapshot,
   );
   const get = useCallback(
-    (category: Category): CategoryRating | null =>
-      ratings ? ratings[category] : null,
+    (interest: Interest): InterestRating | null =>
+      ratings ? ratings[interest] : null,
     [ratings],
   );
   const update = useCallback(
-    (category: Category, delta: number) => updateRating(category, delta),
+    (interest: Interest, delta: number) => updateRating(interest, delta),
     [],
   );
   return {

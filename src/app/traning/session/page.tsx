@@ -4,27 +4,25 @@ import { useRouter } from "next/navigation";
 import { useMemo, useSyncExternalStore } from "react";
 
 import {
-  CATEGORY_LABEL,
-  DIFFICULTY_LABEL,
-} from "@/features/quiz/category-meta";
-import {
   PlayQuestions,
   type Answer,
 } from "@/features/quiz/play-questions";
 import { updateRating } from "@/features/training/use-ratings";
+import { DIFFICULTY_LABEL } from "@/lib/difficulty";
+import { INTEREST_META } from "@/lib/interests";
 import { calculateSessionDelta } from "@/lib/rating";
 import {
   createTrainingSession,
   saveTrainingSession,
   timeLimitForMode,
 } from "@/lib/training";
-import type { Category, Difficulty, Question } from "@/types/quiz";
+import type { Difficulty, Interest, Question } from "@/types/quiz";
 import type { TrainingMode } from "@/types/training";
 
 const SESSION_KEY = "quiz-app.current-training";
 
 type StoredConfig = {
-  category: Category;
+  interest: Interest;
   difficulty: Difficulty;
   mode: TrainingMode;
   questions: Question[];
@@ -101,12 +99,12 @@ export default function TrainingSessionPage() {
     );
 
     const { before: ratingBefore, after: ratingAfter } = updateRating(
-      config.category,
+      config.interest,
       ratingDelta,
     );
 
     const session = createTrainingSession({
-      category: config.category,
+      interest: config.interest,
       difficulty: config.difficulty,
       mode: config.mode,
       score,
@@ -132,7 +130,7 @@ export default function TrainingSessionPage() {
       avgTime: averageTimePerQuestion.toFixed(1),
       totalTime: (totalTimeMs / 1000).toFixed(1),
       mode: config.mode,
-      category: config.category,
+      interest: config.interest,
       difficulty: config.difficulty,
       ratingBefore: String(ratingBefore),
       ratingAfter: String(ratingAfter),
@@ -150,7 +148,7 @@ export default function TrainingSessionPage() {
     router.replace("/traning");
   };
 
-  const subtitle = `${CATEGORY_LABEL[config.category]} · ${DIFFICULTY_LABEL[config.difficulty]}`;
+  const subtitle = `${INTEREST_META[config.interest].name} · ${DIFFICULTY_LABEL[config.difficulty]}`;
 
   return (
     <PlayQuestions

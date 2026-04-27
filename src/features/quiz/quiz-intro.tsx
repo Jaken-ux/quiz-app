@@ -4,15 +4,17 @@ import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { LikeButton } from "@/features/quiz/like-button";
 import {
-  CATEGORY_ACCENT_BAR,
-  CATEGORY_EMOJI,
-  CATEGORY_ICON_BG,
-  CATEGORY_LABEL,
   DIFFICULTY_EMOJI,
   DIFFICULTY_LABEL,
-} from "@/features/quiz/category-meta";
-import { LikeButton } from "@/features/quiz/like-button";
+} from "@/lib/difficulty";
+import {
+  INTEREST_ACCENT_BAR,
+  INTEREST_ICON_BG,
+  INTEREST_META,
+  primaryInterest,
+} from "@/lib/interests";
 import { cn } from "@/lib/utils";
 import type { Play } from "@/types/play";
 import type { Quiz } from "@/types/quiz";
@@ -27,6 +29,8 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
   const router = useRouter();
   const hasQuestions = quiz.questions.length > 0;
   const isTrainingNext = officialPlay !== null;
+  const lead = primaryInterest(quiz.interests);
+  const leadMeta = INTEREST_META[lead];
 
   return (
     <div className="flex min-h-full flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
@@ -49,22 +53,22 @@ export function QuizIntro({ quiz, officialPlay, onStart }: QuizIntroProps) {
           <div
             className={cn(
               "absolute inset-y-3 left-2 w-1.5 rounded-full",
-              CATEGORY_ACCENT_BAR[quiz.category],
+              INTEREST_ACCENT_BAR[lead],
             )}
             aria-hidden
           />
           <div
             className={cn(
               "ml-2 flex size-[88px] shrink-0 items-center justify-center rounded-2xl text-5xl shadow-inner",
-              CATEGORY_ICON_BG[quiz.category],
+              INTEREST_ICON_BG[lead],
             )}
             aria-hidden
           >
-            {CATEGORY_EMOJI[quiz.category]}
+            {leadMeta.emoji}
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-              {CATEGORY_LABEL[quiz.category]}
+              {leadMeta.name}
             </p>
             <h1 className="mt-0.5 text-2xl font-extrabold leading-tight text-dark">
               {quiz.title}

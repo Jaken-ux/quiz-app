@@ -20,8 +20,8 @@ export function pickNextQuiz(
   );
   if (playable.length === 0) return null;
 
-  const sameCategory = playable.filter(
-    (q) => q.category === current.category,
+  const sharedInterest = playable.filter((q) =>
+    q.interests.some((i) => current.interests.includes(i)),
   );
   const currentIdx = DIFFICULTIES.indexOf(current.difficulty);
 
@@ -38,13 +38,13 @@ export function pickNextQuiz(
     reason = "same";
   }
 
-  // 1) Same category, preferred difficulty.
-  const exact = sameCategory.find((q) => q.difficulty === preferred);
+  // 1) Shared interest, preferred difficulty.
+  const exact = sharedInterest.find((q) => q.difficulty === preferred);
   if (exact) return { quiz: exact, reason };
 
-  // 2) Same category, closest available difficulty.
-  if (sameCategory.length > 0) {
-    const sorted = [...sameCategory].sort((a, b) => {
+  // 2) Shared interest, closest available difficulty.
+  if (sharedInterest.length > 0) {
+    const sorted = [...sharedInterest].sort((a, b) => {
       const da = Math.abs(DIFFICULTIES.indexOf(a.difficulty) - currentIdx);
       const db = Math.abs(DIFFICULTIES.indexOf(b.difficulty) - currentIdx);
       return da - db;

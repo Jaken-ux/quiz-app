@@ -1,25 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 
-import { quizzes } from "@/data/quizzes";
 import { useUser } from "@/features/auth/use-user";
-import {
-  CATEGORIES,
-  CATEGORY_ACCENT_BAR,
-  CATEGORY_EMOJI,
-  CATEGORY_ICON_BG,
-  CATEGORY_LABEL,
-} from "@/features/quiz/category-meta";
 import { readPlays } from "@/features/quiz/use-plays";
 import { BADGES } from "@/features/stats/badges";
 import {
   XP_PER_LEVEL_CONST,
   computeStats,
 } from "@/features/stats/compute-stats";
+import {
+  INTERESTS,
+  INTEREST_ACCENT_BAR,
+  INTEREST_ICON_BG,
+  INTEREST_META,
+} from "@/lib/interests";
 import { cn } from "@/lib/utils";
-import type { Quiz } from "@/types/quiz";
 
 function useHasMounted(): boolean {
   return useSyncExternalStore(
@@ -29,16 +25,22 @@ function useHasMounted(): boolean {
   );
 }
 
+type Tier = "minimal" | "growing" | "full";
+
+function tierFor(totalPlays: number): Tier {
+  if (totalPlays >= 10) return "full";
+  if (totalPlays >= 3) return "growing";
+  return "minimal";
+}
+
 export default function StatsPage() {
   const { user } = useUser();
   const mounted = useHasMounted();
 
   const plays = useMemo(() => (mounted ? readPlays() : []), [mounted]);
   const stats = useMemo(() => computeStats(plays), [plays]);
-  const dailyChallenge = useMemo(
-    () => (mounted ? pickDailyChallenge() : null),
-    [mounted],
-  );
+  const tier = tierFor(stats.totalPlays);
+
   const badgeStates = useMemo(
     () =>
       BADGES.map((b) => ({
@@ -73,7 +75,7 @@ export default function StatsPage() {
         <div className="relative flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-black uppercase tracking-widest text-white/80">
-              Din nivå
+              {tier === "minimal" ? "Välkommen" : "Din nivå"}
             </p>
             <div className="mt-1 flex items-baseline gap-2">
               <span className="text-6xl font-black leading-none text-white drop-shadow-sm">
@@ -90,237 +92,234 @@ export default function StatsPage() {
           </div>
         </div>
 
-        <div className="relative mt-5">
-          <div className="flex items-baseline justify-between text-[11px] font-black tabular-nums text-white/90">
-            <span>{stats.xpForLevel} XP</span>
-            <span>{XP_PER_LEVEL_CONST} XP</span>
+        {tier !== "minimal" && (
+          <div className="relative mt-5">
+            <div className="flex items-baseline justify-between text-[11px] font-black tabular-nums text-white/90">
+              <span>{stats.xpForLevel} XP</span>
+              <span>{XP_PER_LEVEL_CONST} XP</span>
+            </div>
+            <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-white/25">
+              <div
+                className="h-full rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.6)] transition-all duration-500"
+                style={{ width: `${xpProgress}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs font-semibold text-white/90">
+              {stats.xpToNextLevel} XP till Level {stats.level + 1}
+            </p>
           </div>
-          <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-white/25">
-            <div
-              className="h-full rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.6)] transition-all duration-500"
-              style={{ width: `${xpProgress}%` }}
-            />
-          </div>
-          <p className="mt-2 text-xs font-semibold text-white/90">
-            {stats.xpToNextLevel} XP till Level {stats.level + 1}
-          </p>
-        </div>
+        )}
       </header>
 
       <div className="flex flex-col gap-5 px-6 pt-5">
-        <section className="flex items-center gap-4 rounded-3xl bg-white p-5 shadow-[0_8px_28px_-10px_rgba(29,53,87,0.18)] ring-1 ring-black/5">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-300 to-rose-400 text-3xl shadow-inner">
-            🔥
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-2xl font-extrabold tabular-nums text-dark">
-              {stats.streakDays} {stats.streakDays === 1 ? "dag" : "dagar"}
-            </p>
-            <p className="text-xs font-semibold text-muted-foreground">
-              {stats.streakDays === 0
-                ? "Spela idag och starta en streak!"
-                : "Fortsätt spela för att hålla den vid liv."}
-            </p>
-          </div>
-        </section>
+        {tier === "minimal" && (
+          <MinimalView totalPlays={stats.totalPlays} />
+        )}
 
-        <section className="grid grid-cols-2 gap-3">
-          <StatTile
-            emoji="🏆"
-            label="Total poäng"
-            value={stats.totalScore.toLocaleString("sv-SE")}
-          />
-          <StatTile
-            emoji="⭐"
-            label="Bästa spel"
-            value={stats.bestScore.toLocaleString("sv-SE")}
-          />
-          <StatTile
-            emoji="🎮"
-            label="Spelade"
-            value={String(stats.totalPlays)}
-          />
-          <StatTile
-            emoji="🎯"
-            label="Träffsäkerhet"
-            value={
-              stats.totalAnswers > 0
-                ? `${Math.round(stats.accuracy * 100)}%`
-                : "—"
-            }
-          />
-        </section>
+        {tier !== "minimal" && (
+          <>
+            <section className="flex items-center gap-4 rounded-3xl bg-white p-5 shadow-[0_8px_28px_-10px_rgba(29,53,87,0.18)] ring-1 ring-black/5">
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-300 to-rose-400 text-3xl shadow-inner">
+                🔥
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl font-extrabold tabular-nums text-dark">
+                  {stats.streakDays}{" "}
+                  {stats.streakDays === 1 ? "dag" : "dagar"}
+                </p>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  {stats.streakDays === 0
+                    ? "Spela idag och starta en streak!"
+                    : "Fortsätt spela för att hålla den vid liv."}
+                </p>
+              </div>
+            </section>
 
-        {dailyChallenge && (
-          <section>
-            <Link
-              href={`/quiz/${dailyChallenge.id}`}
-              className="block rounded-3xl transition-transform active:scale-[0.98]"
-            >
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#F97316] via-[#EC4899] to-[#FCD34D] p-5 shadow-[0_14px_32px_-10px_rgba(249,115,22,0.5)]">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -top-4 -right-4 h-24 w-24 rounded-full bg-white/25 blur-xl"
-                />
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute left-6 bottom-4 size-3 rounded-full bg-white/50"
-                />
-                <div className="relative">
-                  <div className="inline-flex items-center gap-1 rounded-full bg-white/25 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur">
-                    ⚡ Dagens utmaning
-                  </div>
-                  <div className="mt-3 flex items-center gap-3">
+            <section className="grid grid-cols-2 gap-3">
+              <StatTile
+                emoji="🏆"
+                label="Total poäng"
+                value={stats.totalScore.toLocaleString("sv-SE")}
+              />
+              <StatTile
+                emoji="⭐"
+                label="Bästa spel"
+                value={stats.bestScore.toLocaleString("sv-SE")}
+              />
+              <StatTile
+                emoji="🎮"
+                label="Spelade"
+                value={String(stats.totalPlays)}
+              />
+              <StatTile
+                emoji="🎯"
+                label="Träffsäkerhet"
+                value={
+                  stats.totalAnswers > 0
+                    ? `${Math.round(stats.accuracy * 100)}%`
+                    : "—"
+                }
+              />
+            </section>
+          </>
+        )}
+
+        {tier === "full" && (
+          <section className="rounded-3xl bg-white p-5 shadow-[0_8px_28px_-10px_rgba(29,53,87,0.18)] ring-1 ring-black/5">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-lg font-extrabold text-dark">Intressen</h3>
+              <p className="text-[11px] font-bold text-muted-foreground">
+                {stats.uniqueInterestCount}/{INTERESTS.length} utforskade
+              </p>
+            </div>
+            <div className="mt-4 flex flex-col gap-3.5">
+              {INTERESTS.map((interest) => {
+                const m = stats.perInterest[interest];
+                const meta = INTEREST_META[interest];
+                const hasPlays = m.plays > 0;
+                const pct = m.accuracy * 100;
+                return (
+                  <div key={interest} className="flex items-center gap-3">
                     <div
                       className={cn(
-                        "flex size-14 shrink-0 items-center justify-center rounded-2xl text-3xl shadow-inner",
-                        CATEGORY_ICON_BG[dailyChallenge.category],
+                        "flex size-11 shrink-0 items-center justify-center rounded-xl text-xl shadow-inner",
+                        INTEREST_ICON_BG[interest],
                       )}
                       aria-hidden
                     >
-                      {CATEGORY_EMOJI[dailyChallenge.category]}
+                      {meta.emoji}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-lg font-extrabold leading-tight text-white drop-shadow-sm">
-                        {dailyChallenge.title}
-                      </h3>
-                      <p className="mt-0.5 text-xs font-bold text-white/90">
-                        Nå top 25% och kamma hem ⭐ 200 bonus-XP
-                      </p>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="truncate text-sm font-bold text-dark">
+                          {meta.name}
+                        </p>
+                        <p className="text-[11px] font-black tabular-nums text-muted-foreground">
+                          {hasPlays ? `${Math.round(pct)}%` : "oprövad"}
+                        </p>
+                      </div>
+                      <div className="mt-1 h-2 overflow-hidden rounded-full bg-black/5">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            INTEREST_ACCENT_BAR[interest],
+                          )}
+                          style={{
+                            width: `${hasPlays ? Math.max(pct, 4) : 0}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-extrabold text-dark shadow-md">
-                    Starta utmaning
-                  </div>
-                </div>
-              </div>
-            </Link>
+                );
+              })}
+            </div>
           </section>
         )}
 
-        <section className="rounded-3xl bg-white p-5 shadow-[0_8px_28px_-10px_rgba(29,53,87,0.18)] ring-1 ring-black/5">
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-lg font-extrabold text-dark">Kategorier</h3>
-            <p className="text-[11px] font-bold text-muted-foreground">
-              {stats.uniqueCategoryCount}/6 utforskade
-            </p>
-          </div>
-          <div className="mt-4 flex flex-col gap-3.5">
-            {CATEGORIES.map((cat) => {
-              const m = stats.perCategory[cat];
-              const hasPlays = m.plays > 0;
-              const pct = m.accuracy * 100;
-              return (
-                <div key={cat} className="flex items-center gap-3">
+        {tier !== "minimal" && (
+          <section>
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-lg font-extrabold text-dark">Utmärkelser</h3>
+              <p className="text-[11px] font-bold text-muted-foreground">
+                {earnedCount} av {BADGES.length} upplåsta
+              </p>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              {badgeStates.map((badge) => (
+                <div
+                  key={badge.id}
+                  className={cn(
+                    "flex flex-col items-center rounded-2xl p-3 text-center",
+                    badge.earned
+                      ? "bg-white shadow-[0_6px_20px_-8px_rgba(29,53,87,0.25)] ring-1 ring-black/5"
+                      : "bg-white/60 ring-1 ring-black/5",
+                  )}
+                >
                   <div
                     className={cn(
-                      "flex size-11 shrink-0 items-center justify-center rounded-xl text-xl shadow-inner",
-                      CATEGORY_ICON_BG[cat],
+                      "flex size-14 items-center justify-center rounded-2xl text-3xl shadow-inner",
+                      badge.earned
+                        ? "bg-gradient-to-br from-amber-100 to-amber-200"
+                        : "bg-neutral-100",
                     )}
                     aria-hidden
                   >
-                    {CATEGORY_EMOJI[cat]}
+                    <span
+                      className={cn(!badge.earned && "grayscale opacity-40")}
+                    >
+                      {badge.earned ? badge.emoji : "🔒"}
+                    </span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="text-sm font-bold text-dark">
-                        {CATEGORY_LABEL[cat]}
-                      </p>
-                      <p className="text-[11px] font-black tabular-nums text-muted-foreground">
-                        {hasPlays ? `${Math.round(pct)}%` : "oprövad"}
-                      </p>
-                    </div>
-                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-black/5">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all duration-500",
-                          CATEGORY_ACCENT_BAR[cat],
-                        )}
-                        style={{ width: `${hasPlays ? Math.max(pct, 4) : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section>
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-lg font-extrabold text-dark">Utmärkelser</h3>
-            <p className="text-[11px] font-bold text-muted-foreground">
-              {earnedCount} av {BADGES.length} upplåsta
-            </p>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            {badgeStates.map((badge) => (
-              <div
-                key={badge.id}
-                className={cn(
-                  "flex flex-col items-center rounded-2xl p-3 text-center",
-                  badge.earned
-                    ? "bg-white shadow-[0_6px_20px_-8px_rgba(29,53,87,0.25)] ring-1 ring-black/5"
-                    : "bg-white/60 ring-1 ring-black/5",
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex size-14 items-center justify-center rounded-2xl text-3xl shadow-inner",
-                    badge.earned
-                      ? "bg-gradient-to-br from-amber-100 to-amber-200"
-                      : "bg-neutral-100",
-                  )}
-                  aria-hidden
-                >
-                  <span
-                    className={cn(!badge.earned && "grayscale opacity-40")}
+                  <p
+                    className={cn(
+                      "mt-2 text-[11px] font-black leading-tight",
+                      badge.earned ? "text-dark" : "text-muted-foreground",
+                    )}
                   >
-                    {badge.earned ? badge.emoji : "🔒"}
-                  </span>
+                    {badge.label}
+                  </p>
+                  <p className="mt-0.5 text-[10px] font-medium leading-tight text-muted-foreground">
+                    {badge.description}
+                  </p>
                 </div>
-                <p
-                  className={cn(
-                    "mt-2 text-[11px] font-black leading-tight",
-                    badge.earned ? "text-dark" : "text-muted-foreground",
-                  )}
-                >
-                  {badge.label}
-                </p>
-                <p className="mt-0.5 text-[10px] font-medium leading-tight text-muted-foreground">
-                  {badge.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        )}
 
-        <section>
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1D3557] via-[#2C5282] to-[#7C3AED] p-5 text-white shadow-[0_10px_28px_-10px_rgba(29,53,87,0.4)]">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-28 rounded-full bg-white/10 blur-xl"
-            />
-            <div className="relative flex items-center gap-4">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl backdrop-blur">
-                🌐
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-black uppercase tracking-widest text-white/70">
-                  Din globala placering
-                </p>
-                <p className="mt-0.5 text-2xl font-black tabular-nums">
-                  #{stats.mockRank.toLocaleString("sv-SE")}
-                </p>
-                <p className="text-xs font-semibold text-white/90">
-                  av {stats.mockTotalPlayers.toLocaleString("sv-SE")} spelare
-                </p>
+        {tier === "full" && (
+          <section>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1D3557] via-[#2C5282] to-[#7C3AED] p-5 text-white shadow-[0_10px_28px_-10px_rgba(29,53,87,0.4)]">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-28 rounded-full bg-white/10 blur-xl"
+              />
+              <div className="relative flex items-center gap-4">
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl backdrop-blur">
+                  🌐
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-white/70">
+                    Din globala placering
+                  </p>
+                  <p className="mt-0.5 text-2xl font-black tabular-nums">
+                    #{stats.mockRank.toLocaleString("sv-SE")}
+                  </p>
+                  <p className="text-xs font-semibold text-white/90">
+                    av {stats.mockTotalPlayers.toLocaleString("sv-SE")} spelare
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </div>
     </div>
+  );
+}
+
+type MinimalViewProps = { totalPlays: number };
+
+function MinimalView({ totalPlays }: MinimalViewProps) {
+  return (
+    <section className="rounded-3xl bg-white p-6 text-center shadow-[0_8px_28px_-10px_rgba(29,53,87,0.18)] ring-1 ring-black/5">
+      <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-200 to-pink-300 text-4xl shadow-inner">
+        🌱
+      </div>
+      <h3 className="mt-3 text-xl font-extrabold text-dark">
+        {totalPlays === 0
+          ? "Här växer din statistik"
+          : "Bra start! Fortsätt så."}
+      </h3>
+      <p className="mt-1 text-sm font-medium text-muted-foreground">
+        {totalPlays === 0
+          ? "Spela ett quiz så börjar vi räkna XP, streaks och utmärkelser."
+          : `Du har spelat ${totalPlays} quiz. Spela ${
+              3 - totalPlays
+            } till så låser vi upp mer statistik.`}
+      </p>
+    </section>
   );
 }
 
@@ -346,11 +345,4 @@ function StatTile({ emoji, label, value }: StatTileProps) {
       </p>
     </div>
   );
-}
-
-function pickDailyChallenge(): Quiz | null {
-  const playable = quizzes.filter((q) => q.questions.length > 0);
-  if (playable.length === 0) return null;
-  const day = Math.floor(Date.now() / 86_400_000);
-  return playable[day % playable.length];
 }

@@ -6,20 +6,20 @@ import { useMemo, useState } from "react";
 
 import { quizzes } from "@/data/quizzes";
 import { useUser } from "@/features/auth/use-user";
-import {
-  CategoryChips,
-  type CategoryFilter,
-} from "@/features/quiz/category-chips";
-import {
-  CATEGORY_EMOJI,
-  CATEGORY_ICON_BG,
-  CATEGORY_LABEL,
-  DIFFICULTY_LABEL,
-  DIFFICULTY_PILL,
-} from "@/features/quiz/category-meta";
+import { FormatPill } from "@/features/quiz/format-pill";
+import { InterestTag } from "@/features/quiz/interest-tag";
 import { usePlays } from "@/features/quiz/use-plays";
+import { DIFFICULTY_LABEL, DIFFICULTY_PILL } from "@/lib/difficulty";
+import {
+  INTERESTS,
+  INTEREST_ICON_BG,
+  INTEREST_META,
+  interestToSlug,
+  primaryInterest,
+} from "@/lib/interests";
+import { pickRandomQuiz } from "@/lib/smart-random";
 import { cn } from "@/lib/utils";
-import type { Quiz } from "@/types/quiz";
+import type { Interest, Quiz } from "@/types/quiz";
 
 const PEP_MESSAGES = [
   "Vad ska vi babba om idag?",
@@ -30,6 +30,8 @@ const PEP_MESSAGES = [
   "Dags att testa hjärnan.",
   "Quiz först, kaffe sen.",
 ];
+
+const RECENT_LIMIT = 3;
 
 function getPepMessage(): string {
   const idx = new Date().getDay();
@@ -46,33 +48,34 @@ export default function HomePage() {
   );
 
   const [revealed, setRevealed] = useState<Quiz | null>(null);
-  const [browseCategory, setBrowseCategory] =
-    useState<CategoryFilter>("all");
+  const [recent, setRecent] = useState<string[]>([]);
+  const [filter, setFilter] = useState<Interest | "all">("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
 
   const playedIds = useMemo(
     () => new Set(plays.map((p) => p.quizId)),
     [plays],
   );
 
+  const userInterests = user?.interests ?? [];
+
   const browseList = useMemo(() => {
-    if (browseCategory === "all") return playableQuizzes;
-    return playableQuizzes.filter((q) => q.category === browseCategory);
-  }, [playableQuizzes, browseCategory]);
+    if (filter === "all") return playableQuizzes;
+    return playableQuizzes.filter((q) => q.interests.includes(filter));
+  }, [playableQuizzes, filter]);
 
   const spin = () => {
-    if (playableQuizzes.length === 0) return;
-    if (playableQuizzes.length === 1) {
-      setRevealed(playableQuizzes[0]);
-      return;
-    }
-    let next: Quiz;
-    do {
-      next =
-        playableQuizzes[
-          Math.floor(Math.random() * playableQuizzes.length)
-        ];
-    } while (next.id === revealed?.id);
+    const next = pickRandomQuiz(playableQuizzes, {
+      userInterests,
+      excludeIds: recent,
+    });
+    if (!next) return;
     setRevealed(next);
+    setRecent((prev) => {
+      const updated = [next.id, ...prev.filter((id) => id !== next.id)];
+      return updated.slice(0, RECENT_LIMIT);
+    });
   };
 
   const noQuizzes = playableQuizzes.length === 0;
@@ -115,13 +118,32 @@ export default function HomePage() {
         <Randomizer
           revealed={revealed}
           onSpin={spin}
-          onPlay={() => {
-            // navigation handled by Link
-          }}
           isEmpty={noQuizzes}
           isPlayed={revealed ? playedIds.has(revealed.id) : false}
         />
+
+        {userInterests.length > 0 && !noQuizzes && (
+          <button
+            type="button"
+            onClick={() => setWhyOpen(true)}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-[11px] font-bold text-muted-foreground shadow-sm ring-1 ring-black/5 transition active:scale-95"
+          >
+            <span aria-hidden>✨</span>
+            Anpassat efter dig
+            <span
+              aria-hidden
+              className="flex size-4 items-center justify-center rounded-full bg-muted text-[10px] font-black text-muted-foreground"
+            >
+              ?
+            </span>
+          </button>
+        )}
       </section>
+
+      <InterestExploreSection
+        userInterests={userInterests.length > 0 ? userInterests : INTERESTS}
+        showAllPill
+      />
 
       <section className="px-6 pt-7">
         <div className="flex items-end justify-between gap-2">
@@ -132,23 +154,33 @@ export default function HomePage() {
             {browseList.length} quiz
           </p>
         </div>
-        <CategoryChips
-          active={browseCategory}
-          onChange={(value) => {
-            if (value === "all" || typeof value !== "string") {
-              setBrowseCategory(value as CategoryFilter);
-            } else {
-              setBrowseCategory(value);
-            }
-          }}
-          className="mt-3"
-        />
+
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFilterOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-extrabold text-dark shadow-sm ring-1 ring-black/5 transition active:scale-95"
+          >
+            <span aria-hidden>🎛️</span>
+            {filter === "all" ? "Alla intressen" : INTEREST_META[filter].name}
+          </button>
+          {filter !== "all" && (
+            <button
+              type="button"
+              onClick={() => setFilter("all")}
+              className="text-xs font-bold text-muted-foreground underline-offset-2 hover:underline"
+            >
+              Rensa
+            </button>
+          )}
+        </div>
+
         <div className="mt-4 flex flex-col gap-2.5">
           {browseList.length === 0 ? (
             <p className="py-6 text-center text-sm font-medium text-muted-foreground">
               {noQuizzes
                 ? "Roliga quiz är på väg — håll koll!"
-                : "Inga quiz i den kategorin än."}
+                : "Inga quiz för det intresset än."}
             </p>
           ) : (
             browseList.map((quiz) => (
@@ -163,6 +195,22 @@ export default function HomePage() {
       </section>
 
       <div className="pb-2" />
+
+      <FilterSheet
+        open={filterOpen}
+        active={filter}
+        onClose={() => setFilterOpen(false)}
+        onSelect={(value) => {
+          setFilter(value);
+          setFilterOpen(false);
+        }}
+      />
+
+      <WhySheet
+        open={whyOpen}
+        onClose={() => setWhyOpen(false)}
+        interests={userInterests}
+      />
     </div>
   );
 }
@@ -170,17 +218,11 @@ export default function HomePage() {
 type RandomizerProps = {
   revealed: Quiz | null;
   onSpin: () => void;
-  onPlay: () => void;
   isEmpty: boolean;
   isPlayed: boolean;
 };
 
-function Randomizer({
-  revealed,
-  onSpin,
-  isEmpty,
-  isPlayed,
-}: RandomizerProps) {
+function Randomizer({ revealed, onSpin, isEmpty, isPlayed }: RandomizerProps) {
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-300 via-pink-400 to-purple-500 p-5 shadow-[0_18px_44px_-12px_rgba(168,85,247,0.55)]">
       <div
@@ -223,46 +265,7 @@ function Randomizer({
                   }}
                   className="rounded-2xl bg-white p-4 shadow-lg ring-1 ring-black/5"
                 >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={cn(
-                        "flex size-14 shrink-0 items-center justify-center rounded-2xl text-3xl shadow-inner",
-                        CATEGORY_ICON_BG[revealed.category],
-                      )}
-                      aria-hidden
-                    >
-                      {CATEGORY_EMOJI[revealed.category]}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                        {CATEGORY_LABEL[revealed.category]}
-                      </p>
-                      <h3 className="mt-0.5 text-base font-extrabold leading-tight text-dark">
-                        {revealed.title}
-                      </h3>
-                      <p className="mt-1 line-clamp-2 text-xs font-semibold text-muted-foreground">
-                        {revealed.description}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
-                        <span
-                          className={cn(
-                            "inline-flex items-center rounded-full px-2 py-0.5 font-bold",
-                            DIFFICULTY_PILL[revealed.difficulty],
-                          )}
-                        >
-                          {DIFFICULTY_LABEL[revealed.difficulty]}
-                        </span>
-                        <span className="font-semibold text-muted-foreground">
-                          📝 {revealed.questionCount} frågor
-                        </span>
-                        {isPlayed && (
-                          <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">
-                            ✓ Spelad
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <RevealedCard quiz={revealed} isPlayed={isPlayed} />
                 </motion.div>
               </AnimatePresence>
 
@@ -331,12 +334,124 @@ function Randomizer({
   );
 }
 
+type RevealedCardProps = { quiz: Quiz; isPlayed: boolean };
+
+function RevealedCard({ quiz, isPlayed }: RevealedCardProps) {
+  const lead = primaryInterest(quiz.interests);
+  const meta = INTEREST_META[lead];
+  return (
+    <div className="flex items-start gap-3">
+      <div
+        className={cn(
+          "flex size-14 shrink-0 items-center justify-center rounded-2xl text-3xl shadow-inner",
+          INTEREST_ICON_BG[lead],
+        )}
+        aria-hidden
+      >
+        {meta.emoji}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {quiz.interests.map((i) => (
+            <InterestTag key={i} interest={i} />
+          ))}
+        </div>
+        <h3 className="mt-1 text-base font-extrabold leading-tight text-dark">
+          {quiz.title}
+        </h3>
+        <p className="mt-1 line-clamp-2 text-xs font-semibold text-muted-foreground">
+          {quiz.description}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
+          <FormatPill format={quiz.format} />
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-2 py-0.5 font-bold",
+              DIFFICULTY_PILL[quiz.difficulty],
+            )}
+          >
+            {DIFFICULTY_LABEL[quiz.difficulty]}
+          </span>
+          {isPlayed && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">
+              ✓ Spelad
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type InterestExploreSectionProps = {
+  userInterests: Interest[];
+  showAllPill: boolean;
+};
+
+function InterestExploreSection({
+  userInterests,
+  showAllPill,
+}: InterestExploreSectionProps) {
+  return (
+    <section className="pt-7">
+      <div className="flex items-baseline justify-between gap-2 px-6">
+        <h2 className="text-lg font-extrabold text-dark">
+          Utforska intressen
+        </h2>
+        <Link
+          href="/intressen"
+          className="text-xs font-extrabold text-primary underline-offset-2 transition active:scale-95 hover:underline"
+        >
+          Visa alla
+        </Link>
+      </div>
+      <div className="mt-3 flex gap-2.5 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {userInterests.map((interest) => {
+          const meta = INTEREST_META[interest];
+          return (
+            <Link
+              key={interest}
+              href={`/intresse/${interestToSlug(interest)}`}
+              className={cn(
+                "flex h-24 w-28 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 text-center shadow-sm ring-1 ring-black/5 transition active:scale-95",
+                INTEREST_ICON_BG[interest],
+              )}
+            >
+              <span className="text-2xl drop-shadow-sm" aria-hidden>
+                {meta.emoji}
+              </span>
+              <span className="text-[11px] font-extrabold leading-tight text-dark">
+                {meta.name}
+              </span>
+            </Link>
+          );
+        })}
+        {showAllPill && (
+          <Link
+            href="/intressen"
+            className="flex h-24 w-28 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-white px-2 text-center shadow-sm ring-1 ring-dashed ring-black/15 transition active:scale-95"
+          >
+            <span className="text-2xl" aria-hidden>
+              ➕
+            </span>
+            <span className="text-[11px] font-extrabold leading-tight text-muted-foreground">
+              Visa alla
+            </span>
+          </Link>
+        )}
+      </div>
+    </section>
+  );
+}
+
 type CompactQuizRowProps = {
   quiz: Quiz;
   isPlayed: boolean;
 };
 
 function CompactQuizRow({ quiz, isPlayed }: CompactQuizRowProps) {
+  const lead = primaryInterest(quiz.interests);
+  const meta = INTEREST_META[lead];
   return (
     <Link
       href={`/quiz/${quiz.id}`}
@@ -345,17 +460,18 @@ function CompactQuizRow({ quiz, isPlayed }: CompactQuizRowProps) {
       <div
         className={cn(
           "flex size-12 shrink-0 items-center justify-center rounded-xl text-2xl shadow-inner",
-          CATEGORY_ICON_BG[quiz.category],
+          INTEREST_ICON_BG[lead],
         )}
         aria-hidden
       >
-        {CATEGORY_EMOJI[quiz.category]}
+        {meta.emoji}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-          {CATEGORY_LABEL[quiz.category]}
-        </p>
-        <h3 className="truncate text-sm font-extrabold leading-tight text-dark">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <InterestTag interest={lead} />
+          <FormatPill format={quiz.format} showName={false} />
+        </div>
+        <h3 className="mt-0.5 truncate text-sm font-extrabold leading-tight text-dark">
           {quiz.title}
         </h3>
         <p className="text-[10px] font-semibold text-muted-foreground">
@@ -371,5 +487,208 @@ function CompactQuizRow({ quiz, isPlayed }: CompactQuizRowProps) {
         </span>
       )}
     </Link>
+  );
+}
+
+type FilterSheetProps = {
+  open: boolean;
+  active: Interest | "all";
+  onClose: () => void;
+  onSelect: (value: Interest | "all") => void;
+};
+
+function FilterSheet({ open, active, onClose, onSelect }: FilterSheetProps) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="filter-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            key="filter-sheet"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-[2rem] bg-white px-6 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] shadow-[0_-12px_32px_-12px_rgba(0,0,0,0.25)]"
+          >
+            <div
+              aria-hidden
+              className="mx-auto h-1.5 w-12 rounded-full bg-black/10"
+            />
+            <h3 className="mt-4 text-lg font-extrabold text-dark">
+              Filtrera på intresse
+            </h3>
+            <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+              Välj ett intresse — eller visa allt.
+            </p>
+
+            <div className="mt-4 grid grid-cols-3 gap-2.5">
+              <FilterOption
+                label="Alla"
+                emoji="✨"
+                active={active === "all"}
+                onClick={() => onSelect("all")}
+                bg="bg-neutral-100"
+              />
+              {INTERESTS.map((interest) => {
+                const meta = INTEREST_META[interest];
+                return (
+                  <FilterOption
+                    key={interest}
+                    label={meta.name}
+                    emoji={meta.emoji}
+                    active={active === interest}
+                    onClick={() => onSelect(interest)}
+                    bg={INTEREST_ICON_BG[interest]}
+                  />
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-5 h-12 w-full rounded-2xl bg-neutral-100 text-sm font-extrabold text-dark transition active:scale-[0.98]"
+            >
+              Stäng
+            </button>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+type FilterOptionProps = {
+  label: string;
+  emoji: string;
+  active: boolean;
+  onClick: () => void;
+  bg: string;
+};
+
+function FilterOption({
+  label,
+  emoji,
+  active,
+  onClick,
+  bg,
+}: FilterOptionProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl p-2 text-center transition-all duration-150 active:scale-95",
+        bg,
+        active
+          ? "shadow-[0_8px_18px_-8px_rgba(29,53,87,0.45)] ring-4 ring-primary/70 ring-offset-1 ring-offset-white"
+          : "shadow-sm ring-1 ring-black/5",
+      )}
+    >
+      <span className="text-2xl drop-shadow-sm" aria-hidden>
+        {emoji}
+      </span>
+      <span className="text-[10px] font-extrabold leading-tight text-dark">
+        {label}
+      </span>
+    </button>
+  );
+}
+
+type WhySheetProps = {
+  open: boolean;
+  onClose: () => void;
+  interests: Interest[];
+};
+
+function WhySheet({ open, onClose, interests }: WhySheetProps) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="why-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            key="why-sheet"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            className="fixed inset-x-0 bottom-0 z-50 rounded-t-[2rem] bg-white px-6 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] shadow-[0_-12px_32px_-12px_rgba(0,0,0,0.25)]"
+          >
+            <div
+              aria-hidden
+              className="mx-auto h-1.5 w-12 rounded-full bg-black/10"
+            />
+            <h3 className="mt-4 text-lg font-extrabold text-dark">
+              Hur vi väljer åt dig
+            </h3>
+            <p className="mt-2 text-sm font-medium text-muted-foreground">
+              När du trycker <strong className="font-extrabold text-dark">Slumpa</strong>{" "}
+              prioriterar vi quiz som matchar dina intressen — utan att låsa
+              ute andra. Hittar vi inget i dina intressen får du något annat så
+              du aldrig fastnar.
+            </p>
+
+            {interests.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                  Dina intressen
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {interests.map((i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold",
+                        INTEREST_ICON_BG[i],
+                      )}
+                    >
+                      <span aria-hidden>{INTEREST_META[i].emoji}</span>
+                      {INTEREST_META[i].name}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs font-medium text-muted-foreground">
+                  Du kan ändra dem på{" "}
+                  <Link
+                    href="/profile"
+                    className="font-extrabold text-dark underline underline-offset-2"
+                  >
+                    profilen
+                  </Link>
+                  .
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-5 h-12 w-full rounded-2xl bg-neutral-100 text-sm font-extrabold text-dark transition active:scale-[0.98]"
+            >
+              Okej
+            </button>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

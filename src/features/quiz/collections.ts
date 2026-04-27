@@ -1,7 +1,7 @@
 import { quizzes } from "@/data/quizzes";
-import { CATEGORIES } from "@/features/quiz/category-meta";
+import { INTERESTS } from "@/lib/interests";
 import type { Play } from "@/types/play";
-import type { Category, Quiz } from "@/types/quiz";
+import type { Interest, Quiz } from "@/types/quiz";
 
 export type CollectionId = "for-you" | "top" | "featured";
 
@@ -17,9 +17,8 @@ export const COLLECTIONS: CollectionMeta[] = [
   { id: "featured", label: "Utvalda", emoji: "💎" },
 ];
 
-export type FilterId = "all" | Category | CollectionId;
+export type FilterId = "all" | Interest | CollectionId;
 
-// Hand-picked highlights — refreshed when humor-quizzen landar.
 const FEATURED_IDS: string[] = [];
 const FOR_YOU_MIN_RESULTS = 3;
 const TOP_LIMIT = 10;
@@ -28,8 +27,8 @@ export function isCollectionId(id: string): id is CollectionId {
   return id === "for-you" || id === "top" || id === "featured";
 }
 
-export function isCategoryFilter(id: string): id is Category {
-  return (CATEGORIES as readonly string[]).includes(id);
+export function isInterestFilter(id: string): id is Interest {
+  return (INTERESTS as readonly string[]).includes(id);
 }
 
 export function getTopQuizzes(limit = TOP_LIMIT): Quiz[] {
@@ -52,23 +51,22 @@ export function getForYouQuizzes(plays: Play[]): Quiz[] {
     return [...featured, ...popular.filter((q) => !seen.has(q.id))];
   }
 
-  const countByCategory = new Map<Category, number>();
+  const countByInterest = new Map<Interest, number>();
   for (const play of plays) {
     const quiz = quizzes.find((q) => q.id === play.quizId);
     if (!quiz) continue;
-    countByCategory.set(
-      quiz.category,
-      (countByCategory.get(quiz.category) ?? 0) + 1,
-    );
+    for (const interest of quiz.interests) {
+      countByInterest.set(interest, (countByInterest.get(interest) ?? 0) + 1);
+    }
   }
 
-  const topCategories = [...countByCategory.entries()]
+  const topInterests = [...countByInterest.entries()]
     .sort(([, a], [, b]) => b - a)
     .slice(0, 2)
-    .map(([cat]) => cat);
+    .map(([interest]) => interest);
 
   const matched = quizzes
-    .filter((q) => topCategories.includes(q.category))
+    .filter((q) => q.interests.some((i) => topInterests.includes(i)))
     .sort((a, b) => b.playCount - a.playCount);
 
   if (matched.length >= FOR_YOU_MIN_RESULTS) return matched;
@@ -86,5 +84,5 @@ export function filterQuizzes(filter: FilterId, plays: Play[]): Quiz[] {
   if (filter === "for-you") return getForYouQuizzes(plays);
   if (filter === "top") return getTopQuizzes(TOP_LIMIT);
   if (filter === "featured") return getFeaturedQuizzes();
-  return quizzes.filter((q) => q.category === filter);
+  return quizzes.filter((q) => q.interests.includes(filter));
 }

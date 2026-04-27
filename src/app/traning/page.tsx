@@ -6,15 +6,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useRatings } from "@/features/training/use-ratings";
 import {
-  CATEGORIES,
-  CATEGORY_EMOJI,
-  CATEGORY_ICON_BG,
-  CATEGORY_LABEL,
   DIFFICULTY_EMOJI,
   DIFFICULTY_LABEL,
-} from "@/features/quiz/category-meta";
-import { useRatings } from "@/features/training/use-ratings";
+} from "@/lib/difficulty";
+import {
+  INTEREST_ICON_BG,
+  INTEREST_META,
+  INTERESTS,
+} from "@/lib/interests";
 import {
   getRatingLevel,
   getRatingLevelDisplay,
@@ -25,15 +26,15 @@ import {
   timeLimitForMode,
 } from "@/lib/training";
 import { cn } from "@/lib/utils";
-import type { Category, Difficulty, Question } from "@/types/quiz";
+import type { Difficulty, Interest, Question } from "@/types/quiz";
 import type { TrainingMode } from "@/types/training";
 
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 const SESSION_KEY = "quiz-app.current-training";
 const QUESTIONS_PER_SESSION = 10;
 
-function isCategory(value: string | null): value is Category {
-  return value !== null && (CATEGORIES as readonly string[]).includes(value);
+function isInterestValue(value: string | null): value is Interest {
+  return value !== null && (INTERESTS as readonly string[]).includes(value);
 }
 
 function isDifficulty(value: string | null): value is Difficulty {
@@ -53,11 +54,11 @@ function TrainingStartContent() {
   const params = useSearchParams();
   const { ratings } = useRatings();
 
-  const presetCategory = params.get("category");
+  const presetInterest = params.get("interest");
   const presetDifficulty = params.get("difficulty");
 
-  const [category, setCategory] = useState<Category | null>(
-    isCategory(presetCategory) ? presetCategory : null,
+  const [interest, setInterest] = useState<Interest | null>(
+    isInterestValue(presetInterest) ? presetInterest : null,
   );
   const [difficulty, setDifficulty] = useState<Difficulty | null>(
     isDifficulty(presetDifficulty) ? presetDifficulty : null,
@@ -66,13 +67,13 @@ function TrainingStartContent() {
   const [infoOpen, setInfoOpen] = useState(false);
 
   const poolSize =
-    category && difficulty ? getPoolSize(category, difficulty) : null;
+    interest && difficulty ? getPoolSize(interest, difficulty) : null;
   const canStart = poolSize !== null && poolSize > 0;
 
   const handleStart = () => {
-    if (!category || !difficulty || !canStart) return;
+    if (!interest || !difficulty || !canStart) return;
     const items = drawQuestions(
-      category,
+      interest,
       difficulty,
       QUESTIONS_PER_SESSION,
     );
@@ -86,7 +87,7 @@ function TrainingStartContent() {
       timeLimitSeconds,
     }));
     const config = {
-      category,
+      interest,
       difficulty,
       mode,
       questions,
@@ -122,7 +123,7 @@ function TrainingStartContent() {
               Pusha din kunskap
             </h1>
             <p className="mt-1 text-sm font-semibold text-muted-foreground">
-              Välj kategori, svårighet och läge — vi drar slumpmässiga frågor.
+              Välj intresse, svårighet och läge — vi drar slumpmässiga frågor.
             </p>
           </div>
           <button
@@ -138,34 +139,35 @@ function TrainingStartContent() {
 
       <section className="mt-7">
         <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-          Steg 1 · Kategori
+          Steg 1 · Intresse
         </p>
         <div className="mt-3 grid grid-cols-3 gap-3">
-          {CATEGORIES.map((cat) => {
-            const isSelected = category === cat;
-            const r = ratings ? ratings[cat] : null;
+          {INTERESTS.map((option) => {
+            const isSelected = interest === option;
+            const meta = INTEREST_META[option];
+            const r = ratings ? ratings[option] : null;
             const played = r !== null && r.gamesPlayed > 0;
             const level = played ? getRatingLevel(r.rating) : null;
             const display = level ? getRatingLevelDisplay(level) : null;
             return (
               <button
-                key={cat}
+                key={option}
                 type="button"
-                onClick={() => setCategory(cat)}
+                onClick={() => setInterest(option)}
                 aria-pressed={isSelected}
                 className={cn(
                   "relative flex min-h-[112px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-3 text-center transition-all duration-150 active:scale-95",
-                  CATEGORY_ICON_BG[cat],
+                  INTEREST_ICON_BG[option],
                   isSelected
                     ? "shadow-[0_10px_24px_-8px_rgba(14,165,233,0.5)] ring-4 ring-sky-500 ring-offset-2 ring-offset-background"
                     : "shadow-sm ring-1 ring-black/5",
                 )}
               >
                 <span className="text-3xl leading-none" aria-hidden>
-                  {CATEGORY_EMOJI[cat]}
+                  {meta.emoji}
                 </span>
                 <span className="text-[11px] font-black leading-tight text-dark">
-                  {CATEGORY_LABEL[cat]}
+                  {meta.name}
                 </span>
                 {played && r && display ? (
                   <span
@@ -304,52 +306,28 @@ function RatingInfoDialog({ onClose }: RatingInfoDialogProps) {
         className="w-full rounded-t-[2rem] bg-white p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] shadow-[0_-8px_32px_-4px_rgba(29,53,87,0.25)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-emerald-100 text-2xl">
-            🎚️
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-xl font-extrabold text-dark">
-              Hur fungerar rating?
-            </h3>
-            <p className="mt-1 text-xs font-semibold text-muted-foreground">
-              En per kategori — ditt mått på kunskap.
-            </p>
-          </div>
-        </div>
+        <h3 className="text-xl font-extrabold text-dark">
+          Hur fungerar rating?
+        </h3>
+        <p className="mt-1 text-xs font-semibold text-muted-foreground">
+          Ett betyg per intresse — ditt mått på kunskap.
+        </p>
 
         <ul className="mt-5 space-y-2.5 text-sm font-medium text-dark">
-          <RatingFact emoji="🎯" text="Alla startar på 1000." />
-          <RatingFact
-            emoji="✅"
-            text="Rätt svar höjer din rating, fel sänker den."
-          />
-          <RatingFact
-            emoji="🔥"
-            text="Svårare frågor påverkar mer (svår: +15 / -5, lätt: +6 / -10)."
-          />
-          <RatingFact
-            emoji="⚡"
-            text="Snabba svar (under halva tiden) ger +3 bonus."
-          />
-          <RatingFact
-            emoji="💨"
-            text="Snabb-läget fördubblar all rating-effekt."
-          />
+          <li className="flex items-start gap-2">🎯 Alla startar på 1000.</li>
+          <li className="flex items-start gap-2">
+            ✅ Rätt svar höjer din rating, fel sänker den.
+          </li>
+          <li className="flex items-start gap-2">
+            🔥 Svårare frågor påverkar mer (svår: +15 / -5, lätt: +6 / -10).
+          </li>
+          <li className="flex items-start gap-2">
+            ⚡ Snabba svar (under halva tiden) ger +3 bonus.
+          </li>
+          <li className="flex items-start gap-2">
+            💨 Snabb-läget fördubblar all rating-effekt.
+          </li>
         </ul>
-
-        <div className="mt-5 rounded-2xl bg-neutral-50 p-3 ring-1 ring-black/5">
-          <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-            Nivåtrappa
-          </p>
-          <ul className="mt-2 grid grid-cols-1 gap-1.5 text-[11px] font-bold">
-            <LevelRow color="#9CA3AF" emoji="🌱" name="Nybörjare" range="< 800" />
-            <LevelRow color="#3B82F6" emoji="💙" name="Hängiven" range="800–1199" />
-            <LevelRow color="#10B981" emoji="🌟" name="Skicklig" range="1200–1599" />
-            <LevelRow color="#A855F7" emoji="🏅" name="Expert" range="1600–1999" />
-            <LevelRow color="#F59E0B" emoji="👑" name="Mästare" range="2000+" />
-          </ul>
-        </div>
 
         <button
           type="button"
@@ -360,41 +338,6 @@ function RatingInfoDialog({ onClose }: RatingInfoDialogProps) {
         </button>
       </motion.div>
     </motion.div>
-  );
-}
-
-function RatingFact({ emoji, text }: { emoji: string; text: string }) {
-  return (
-    <li className="flex items-start gap-2">
-      <span className="mt-0.5 text-base leading-none" aria-hidden>
-        {emoji}
-      </span>
-      <span className="leading-snug">{text}</span>
-    </li>
-  );
-}
-
-function LevelRow({
-  color,
-  emoji,
-  name,
-  range,
-}: {
-  color: string;
-  emoji: string;
-  name: string;
-  range: string;
-}) {
-  return (
-    <li className="flex items-center gap-2">
-      <span aria-hidden>{emoji}</span>
-      <span style={{ color }} className="font-black">
-        {name}
-      </span>
-      <span className="ml-auto tabular-nums text-muted-foreground">
-        {range}
-      </span>
-    </li>
   );
 }
 

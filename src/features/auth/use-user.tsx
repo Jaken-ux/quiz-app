@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import type { User } from "@/types/user";
+import type { Interest } from "@/types/quiz";
 
 const STORAGE_KEY = "quiz-app.user";
 
@@ -91,6 +92,7 @@ function useHasHydrated(): boolean {
 type UserContextValue = {
   user: User | null;
   setUser: (user: User) => void;
+  updateInterests: (interests: Interest[]) => void;
   clearUser: () => void;
   isLoading: boolean;
 };
@@ -113,13 +115,28 @@ export function UserProvider({ children }: UserProviderProps) {
     writeUser(next);
   }, []);
 
+  const updateInterests = useCallback(
+    (interests: Interest[]) => {
+      const current = getSnapshot();
+      if (!current) return;
+      writeUser({ ...current, interests });
+    },
+    [],
+  );
+
   const clearUser = useCallback(() => {
     removeUser();
   }, []);
 
   return (
     <UserContext.Provider
-      value={{ user, setUser, clearUser, isLoading: !hasHydrated }}
+      value={{
+        user,
+        setUser,
+        updateInterests,
+        clearUser,
+        isLoading: !hasHydrated,
+      }}
     >
       {children}
     </UserContext.Provider>

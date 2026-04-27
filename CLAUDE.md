@@ -55,25 +55,107 @@ försök är "träningsläge" — visar resultat men ändrar inte placering.
 Veckans quiz, månadens quiz och alla signatur-quiz tillhör detta läge.
 
 **Träna-läget**: Endless-sessions där 10 random frågor dras ur en pool
-baserat på kategori + svårighet. Inget officiellt resultat — istället
-en rating per kategori (1000 vid start, rör sig 100–3000) som följer
+baserat på intresse + svårighet. Inget officiellt resultat — istället
+en rating per intresse (1000 vid start, rör sig 100–3000) som följer
 användarens kunskap upp och ner. Två lägen: Klassisk (15s/fråga) och
 Snabb (7s/fråga, dubbla rating-effekten).
 
 Träna-frågorna lever i `src/data/question-pool.ts` (taggade med
-kategori + svårighet) — separat från `src/data/quizzes.ts` som driver
+intresse + svårighet) — separat från `src/data/quizzes.ts` som driver
 de fasta quizen. Utöka poolen genom att lägga till fler `QuestionPoolItem`
-i den listan; `drawQuestions(category, difficulty, count)` i
+i den listan; `drawQuestions(interest, difficulty, count)` i
 `src/lib/training.ts` plockar slumpvis när en session startas.
+
+## Intressen istället för kategorier
+
+Tidigare hade vi en `Category`-typ som låste varje quiz till exakt en
+bucket. Nu har vi 12 **intressen** (`Interest` i `src/types/quiz.ts`)
+och varje quiz taggas med en `interests: Interest[]`-array — quiz kan
+alltså bo i flera intressen samtidigt. Metadata (emoji, namn, färg,
+Tailwind-klasser) finns centralt i `src/lib/interests.ts`.
+`primaryInterest(interests)` ger ett ledande intresse för UI som bara
+har plats för ett.
 
 Visuellt språk:
 - Quiz-läge officiellt: röd primär, "ranking"-känsla (rosetter, percentil)
 - Quiz-läge träning (replay av spelat quiz): blå/grön accent, mjukare ton
 - Träna-läge: blå/grön gradient genomgående, "övning och tillväxt"
 
+## Personalisering (smaktest + smart slump)
+
+Vid onboarding gör användaren ett **smaktest** — väljer minst 3 av 12
+intressen i en grid. Sparas på `User.interests` i localStorage. Befintliga
+användare utan intressen får ett mini-onboarding (bara smaktest-steget)
+via `OnboardingGate` innan resten av appen visas igen.
+
+`pickRandomQuiz(allQuizzes, userInterests, excludeIds)` i
+`src/lib/smart-random.ts` är hem-flödets slumpknapp:
+
+1. Filtrera bort de senaste 3 visade (excludeIds).
+2. Om någon kandidat delar intresse med användaren → välj bland dem.
+3. Annars → välj fritt ur kandidatpoolen (fallback, så användaren aldrig
+   fastnar bara för att utbudet är litet).
+4. Sista utväg: ignorera excludeIds.
+
+Användaren kan ändra intressen från profilen ("Mina intressen" → editor
+med samma `InterestPicker`-komponent som onboarding använder).
+Information om hur slumpen fungerar visas i en bottom sheet bakom
+en "Anpassat efter dig"-pill på hem-skärmen.
+
+## Landningssidor per intresse
+
+Varje intresse har en egen landningssida på `/intresse/[slug]`
+(`src/app/intresse/[slug]/page.tsx`). Slug-format: `'sverige_grejer'`
+↔ `/intresse/sverige-grejer` via `interestToSlug`/`slugToInterest`
+i `src/lib/interests.ts`. En översiktssida på `/intressen` listar
+alla 12 intressen som klickbara kort.
+
+**Tema är primär kategori, format är metadata.** Quiz är taggade
+med `interests: Interest[]` (vad det handlar om) och `format: QuizFormat`
+(hur det presenteras — text, bild, ljud, omröstning, sant/falskt,
+blandat). Landningssidan grupperar quiz först per intresse, sedan
+per format. När nya format läggs till (ex. bildquiz) syns de
+automatiskt som egna sektioner på landningssidan så fort minst ett
+quiz med det formatet är taggat med intresset — sektioner med 0
+träffar hoppas över helt så sidan aldrig visar tomma kategorier.
+
+**Hero-skinning per intresse**: `INTEREST_HERO_GRADIENT` och
+`INTEREST_HERO_DARK_TEXT` styr toppfärg och text-kontrast (ljusa
+pasteller får mörk text, mättade färger får vit). `INTEREST_BUTTON_BG`
+ger CTA-knappens färg på landningssidan. Resten av sidan följer
+appens normala stil — färgen indikerar tema, inte bygger om appen.
+
+**Smart-random scoping**: `pickRandomQuiz(allQuizzes, { onlyInterest })`
+låser slumpen till ett intresse (landningssidans CTA). Default-läget
+(utan `onlyInterest`) använder fortfarande `userInterests` med
+fallback. `excludeIds` är best-effort i båda lägena.
+
+**Klickbara intressetaggar**: `InterestTag` (i
+`src/features/quiz/interest-tag.tsx`) renderas som `<button>` som
+router-pushar — inte `<Link>` — för att undvika nästlade `<a>`
+inuti quiz-kortets ytter-Link. Tags finns på QuizCard,
+RevealedCard, CompactQuizRow, FullQuizRow på landningssidan, samt
+profilens "Mina intressen". Format-pillen (`FormatPill`) öppnar
+en bottom sheet med formatets beskrivning vid klick.
+
+## Progressiv stats-vy
+
+Statistik-fliken har tre nivåer baserat på `totalPlays`:
+
+- **0–2 spel** (`minimal`): Bara header + kort välkomstkort. Inga
+  badges, inga staplar, ingen XP-bar — tomt skiljer sig inte från
+  intressant.
+- **3–9 spel** (`growing`): Header med XP-bar, streak-kort, fyra
+  stat-tiles, och badges. Per-intresse-listan ligger i bakgrunden tills
+  fler spel ger meningsfull data.
+- **10+ spel** (`full`): Full vy med per-intresse-progressionsbarer
+  (alla 12 intressen) och global-rank-kort.
+
+Tier-funktionen (`tierFor`) bor inline i `src/app/stats/page.tsx`.
+
 ## Rating-systemet
 
-Varje kategori har sin egen rating som börjar på 1000 och rör sig
+Varje intresse har sin egen rating som börjar på 1000 och rör sig
 mellan 100 och 3000. Bara Träna-läget påverkar rating; Quiz-läget
 ger percentil men inte rating.
 
@@ -93,8 +175,8 @@ ger percentil men inte rating.
 - 👑 Mästare (`#F59E0B`) — 2000+
 
 Rating sparas i localStorage under `quiz-app.ratings` som en map
-keyad på kategori. `useRatings()` ger reaktiv åtkomst,
-`updateRating(category, delta)` skriver. Ingen rating decay över
+keyad på intresse. `useRatings()` ger reaktiv åtkomst,
+`updateRating(interest, delta)` skriver. Ingen rating decay över
 tid — bara prestation flyttar siffran.
 
 ## Referens
@@ -123,16 +205,16 @@ att allt innanför viewporten ska kännas som en app.
 - Tryckfeedback på alla knappar (scale-down eller opacity-dip)
 
 ### Onboarding-flöde (obligatoriskt innan appen kan användas)
-1. Välkomstskärm med kort intro
-2. Välj avatar (bibliotek av färdiga illustrationer)
-3. Välj användarnamn
-4. Landar i hem-fliken
+1. Steg 1 — namn + avatar (bibliotek av färdiga illustrationer)
+2. Steg 2 — smaktest: välj minst 3 av 12 intressen
+3. Landar i hem-fliken
 
 ### Konto i prototyp-fas
 - Sparas i localStorage, inte i backend
-- Nyckel: `quiz-app.user` → { username, avatar, createdAt }
-- Om ingen user finns → visa onboarding
-- Om user finns → hoppa direkt till hem
+- Nyckel: `quiz-app.user` → { username, avatar, interests, createdAt }
+- Om ingen user finns → visa fullt onboarding
+- Om user finns men interests är tom/saknas → mini-onboarding (bara smaktest)
+- Om user är komplett → hoppa direkt till hem
 
 ### Förbjudet i UI
 - Hamburger-menyer

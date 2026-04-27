@@ -2,15 +2,19 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
+import { FormatPill } from "@/features/quiz/format-pill";
+import { InterestTag } from "@/features/quiz/interest-tag";
+import { LikeButton } from "@/features/quiz/like-button";
 import {
-  CATEGORY_ACCENT_BAR,
-  CATEGORY_EMOJI,
-  CATEGORY_ICON_BG,
-  CATEGORY_LABEL,
   DIFFICULTY_LABEL,
   DIFFICULTY_PILL,
-} from "@/features/quiz/category-meta";
-import { LikeButton } from "@/features/quiz/like-button";
+} from "@/lib/difficulty";
+import {
+  INTEREST_ACCENT_BAR,
+  INTEREST_ICON_BG,
+  INTEREST_META,
+  primaryInterest,
+} from "@/lib/interests";
 import { cn } from "@/lib/utils";
 import type { Quiz } from "@/types/quiz";
 
@@ -27,6 +31,9 @@ function formatPlayCount(n: number): string {
 }
 
 export function QuizCard({ quiz, isPlayed = false }: QuizCardProps) {
+  const lead = primaryInterest(quiz.interests);
+  const meta = INTEREST_META[lead];
+
   return (
     <Link
       href={`/quiz/${quiz.id}`}
@@ -36,7 +43,7 @@ export function QuizCard({ quiz, isPlayed = false }: QuizCardProps) {
         <div
           className={cn(
             "absolute inset-y-3 left-2 w-1.5 rounded-full",
-            CATEGORY_ACCENT_BAR[quiz.category],
+            INTEREST_ACCENT_BAR[lead],
           )}
           aria-hidden
         />
@@ -55,19 +62,21 @@ export function QuizCard({ quiz, isPlayed = false }: QuizCardProps) {
           <div
             className={cn(
               "flex size-[72px] shrink-0 items-center justify-center rounded-2xl text-4xl shadow-inner",
-              CATEGORY_ICON_BG[quiz.category],
+              INTEREST_ICON_BG[lead],
             )}
             aria-hidden
           >
-            {CATEGORY_EMOJI[quiz.category]}
+            {meta.emoji}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-              {CATEGORY_LABEL[quiz.category]}
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {quiz.interests.map((i) => (
+                <InterestTag key={i} interest={i} />
+              ))}
+            </div>
             <h3
               className={cn(
-                "mt-0.5 text-lg font-extrabold leading-tight text-dark",
+                "mt-1.5 text-lg font-extrabold leading-tight text-dark",
                 isPlayed && "pr-20",
               )}
             >
@@ -80,6 +89,7 @@ export function QuizCard({ quiz, isPlayed = false }: QuizCardProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
+          <FormatPill format={quiz.format} />
           <span
             className={cn(
               "inline-flex items-center rounded-full px-2.5 py-1 font-bold",
@@ -87,10 +97,6 @@ export function QuizCard({ quiz, isPlayed = false }: QuizCardProps) {
             )}
           >
             {DIFFICULTY_LABEL[quiz.difficulty]}
-          </span>
-          <span className="inline-flex items-center gap-1 font-semibold text-muted-foreground">
-            <span aria-hidden>📝</span>
-            {quiz.questionCount} frågor
           </span>
           <span className="inline-flex items-center gap-1 font-semibold text-muted-foreground">
             <span aria-hidden>👥</span>

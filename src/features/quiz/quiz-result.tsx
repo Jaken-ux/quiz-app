@@ -4,13 +4,6 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 
-import {
-  CATEGORY_EMOJI,
-  CATEGORY_ICON_BG,
-  CATEGORY_LABEL,
-  DIFFICULTY_LABEL,
-  DIFFICULTY_PILL,
-} from "@/features/quiz/category-meta";
 import { maxPossibleScore } from "@/features/quiz/game-utils";
 import { LikeButton } from "@/features/quiz/like-button";
 import {
@@ -18,6 +11,15 @@ import {
   type NextSuggestion,
 } from "@/features/quiz/next-quiz";
 import type { Answer } from "@/features/quiz/play-questions";
+import {
+  DIFFICULTY_LABEL,
+  DIFFICULTY_PILL,
+} from "@/lib/difficulty";
+import {
+  INTEREST_ICON_BG,
+  INTEREST_META,
+  primaryInterest,
+} from "@/lib/interests";
 import { cn } from "@/lib/utils";
 import type { Play } from "@/types/play";
 import type { Quiz } from "@/types/quiz";
@@ -478,6 +480,8 @@ type NextQuizCardProps = {
 function NextQuizCard({ suggestion }: NextQuizCardProps) {
   const { quiz, reason } = suggestion;
   const { label, emoji } = reasonLabel(reason);
+  const lead = primaryInterest(quiz.interests);
+  const leadMeta = INTEREST_META[lead];
 
   return (
     <Link
@@ -497,15 +501,15 @@ function NextQuizCard({ suggestion }: NextQuizCardProps) {
             <div
               className={cn(
                 "flex size-12 shrink-0 items-center justify-center rounded-2xl text-2xl shadow-inner",
-                CATEGORY_ICON_BG[quiz.category],
+                INTEREST_ICON_BG[lead],
               )}
               aria-hidden
             >
-              {CATEGORY_EMOJI[quiz.category]}
+              {leadMeta.emoji}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-wider text-white/70">
-                {CATEGORY_LABEL[quiz.category]}
+                {leadMeta.name}
               </p>
               <h3 className="text-base font-extrabold leading-tight text-white drop-shadow-sm">
                 {quiz.title}

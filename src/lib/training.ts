@@ -1,5 +1,5 @@
 import { questionPool } from "@/data/question-pool";
-import type { Category, Difficulty } from "@/types/quiz";
+import type { Difficulty, Interest } from "@/types/quiz";
 import type {
   QuestionPoolItem,
   TrainingMode,
@@ -9,24 +9,23 @@ import type {
 const STORAGE_KEY = "quiz-app.training-sessions";
 
 export function getPoolSize(
-  category: Category,
+  interest: Interest,
   difficulty: Difficulty,
 ): number {
   return questionPool.filter(
-    (q) => q.category === category && q.difficulty === difficulty,
+    (q) => q.interest === interest && q.difficulty === difficulty,
   ).length;
 }
 
 export function drawQuestions(
-  category: Category,
+  interest: Interest,
   difficulty: Difficulty,
   count: number,
 ): QuestionPoolItem[] {
   const matching = questionPool.filter(
-    (q) => q.category === category && q.difficulty === difficulty,
+    (q) => q.interest === interest && q.difficulty === difficulty,
   );
   if (matching.length === 0) return [];
-  // Fisher–Yates shuffle so each session feels fresh.
   const shuffled = [...matching];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -47,7 +46,7 @@ function generateId(): string {
 }
 
 export function createTrainingSession(input: {
-  category: Category;
+  interest: Interest;
   difficulty: Difficulty;
   mode: TrainingMode;
   score: number;
@@ -60,7 +59,7 @@ export function createTrainingSession(input: {
 }): TrainingSession {
   return {
     id: generateId(),
-    category: input.category,
+    interest: input.interest,
     difficulty: input.difficulty,
     mode: input.mode,
     score: input.score,

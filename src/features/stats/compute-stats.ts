@@ -1,8 +1,9 @@
 import { quizzes } from "@/data/quizzes";
+import { INTERESTS } from "@/lib/interests";
 import type { Play } from "@/types/play";
-import type { Category } from "@/types/quiz";
+import type { Interest } from "@/types/quiz";
 
-export type CategoryMastery = {
+export type InterestMastery = {
   plays: number;
   correctAnswers: number;
   totalAnswers: number;
@@ -22,8 +23,8 @@ export type Stats = {
   xpToNextLevel: number;
   rankTitle: string;
   streakDays: number;
-  uniqueCategoryCount: number;
-  perCategory: Record<Category, CategoryMastery>;
+  uniqueInterestCount: number;
+  perInterest: Record<Interest, InterestMastery>;
   mockRank: number;
   mockTotalPlayers: number;
 };
@@ -45,8 +46,8 @@ export function rankForLevel(level: number): string {
   return "Nybörjare";
 }
 
-function getQuizCategory(quizId: string): Category | null {
-  return quizzes.find((q) => q.id === quizId)?.category ?? null;
+function getQuizInterests(quizId: string): Interest[] {
+  return quizzes.find((q) => q.id === quizId)?.interests ?? [];
 }
 
 function dayKey(iso: string): string {
@@ -76,8 +77,16 @@ function computeStreak(plays: Play[]): number {
   return streak;
 }
 
-function emptyMastery(): CategoryMastery {
+function emptyMastery(): InterestMastery {
   return { plays: 0, correctAnswers: 0, totalAnswers: 0, accuracy: 0 };
+}
+
+function emptyPerInterest(): Record<Interest, InterestMastery> {
+  const map = {} as Record<Interest, InterestMastery>;
+  for (const interest of INTERESTS) {
+    map[interest] = emptyMastery();
+  }
+  return map;
 }
 
 export function computeStats(plays: Play[]): Stats {
@@ -103,37 +112,29 @@ export function computeStats(plays: Play[]): Stats {
   const xpToNextLevel = XP_PER_LEVEL - xpForLevel;
   const rankTitle = rankForLevel(level);
 
-  const perCategory: Record<Category, CategoryMastery> = {
-    kandisar: emptyMastery(),
-    politiska_blundrar: emptyMastery(),
-    sverige_kuriosa: emptyMastery(),
-    dialekt_sprak: emptyMastery(),
-    kultur_nostalgi: emptyMastery(),
-    folkets_tycke: emptyMastery(),
-  };
+  const perInterest = emptyPerInterest();
 
   for (const play of plays) {
-    const cat = getQuizCategory(play.quizId);
-    if (!cat) continue;
-    const mastery = perCategory[cat];
-    mastery.plays += 1;
-    mastery.correctAnswers += play.correctCount;
-    mastery.totalAnswers += play.totalQuestions;
-    mastery.accuracy =
-      mastery.totalAnswers > 0
-        ? mastery.correctAnswers / mastery.totalAnswers
-        : 0;
+    const interests = getQuizInterests(play.quizId);
+    if (interests.length === 0) continue;
+    for (const interest of interests) {
+      const mastery = perInterest[interest];
+      mastery.plays += 1;
+      mastery.correctAnswers += play.correctCount;
+      mastery.totalAnswers += play.totalQuestions;
+      mastery.accuracy =
+        mastery.totalAnswers > 0
+          ? mastery.correctAnswers / mastery.totalAnswers
+          : 0;
+    }
   }
 
-  const uniqueCategoryCount = Object.values(perCategory).filter(
+  const uniqueInterestCount = Object.values(perInterest).filter(
     (m) => m.plays > 0,
   ).length;
 
   const streakDays = computeStreak(plays);
 
-  // Fake leaderboard rank that improves as the user scores. Clamped so a
-  // fresh user still starts mid-pack (not dead last) and high scorers
-  // eventually reach the top.
   const mockRank = Math.max(
     120,
     Math.min(
@@ -155,8 +156,8 @@ export function computeStats(plays: Play[]): Stats {
     xpToNextLevel,
     rankTitle,
     streakDays,
-    uniqueCategoryCount,
-    perCategory,
+    uniqueInterestCount,
+    perInterest,
     mockRank,
     mockTotalPlayers: MOCK_TOTAL_PLAYERS,
   };
